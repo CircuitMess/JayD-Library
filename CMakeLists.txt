@@ -42,10 +42,6 @@ include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.0/libraries/Circ
 
 include_directories(${ArduinoLibs}/TFT_eSPI)
 include_directories(${ArduinoLibs}/TFT_eSPI/Extensions)
-include_directories(${ArduinoLibs}/ESP8266Audio/src)
-include_directories(${ArduinoLibs}/SerialFlash)
-include_directories(${ArduinoLibs}/ArduinoJson/src)
-include_directories(${ArduinoLibs}/NTPClient)
 
 
 AUX_SOURCE_DIRECTORY(src SOURCES)
@@ -62,6 +58,7 @@ AUX_SOURCE_DIRECTORY(src/Speech SOURCES)
 AUX_SOURCE_DIRECTORY(src/State SOURCES)
 AUX_SOURCE_DIRECTORY(src/Util SOURCES)
 AUX_SOURCE_DIRECTORY(src/Input SOURCES)
+AUX_SOURCE_DIRECTORY(src/AudioLib SOURCES)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
 
