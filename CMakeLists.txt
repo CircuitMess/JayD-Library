@@ -42,25 +42,10 @@ include_directories(${Arduino15}/packages/cm/hardware/esp32/1.0.4/tools/sdk/incl
 include_directories(${ArduinoLibs}/CircuitOS/src)
 include_directories(${ArduinoLibs}/TFT_eSPI)
 include_directories(${ArduinoLibs}/TFT_eSPI/Extensions)
-include_directories(${ArduinoLibs}/ESP8266Audio/src)
-include_directories(${ArduinoLibs}/SerialFlash)
-include_directories(${ArduinoLibs}/ArduinoJson/src)
-include_directories(${ArduinoLibs}/NTPClient)
 
 
 AUX_SOURCE_DIRECTORY(src SOURCES)
-AUX_SOURCE_DIRECTORY(src/DataStream SOURCES)
-AUX_SOURCE_DIRECTORY(src/Intent SOURCES)
-AUX_SOURCE_DIRECTORY(src/Intent/Funpack SOURCES)
-AUX_SOURCE_DIRECTORY(src/LEDmatrix SOURCES)
-AUX_SOURCE_DIRECTORY(src/Services SOURCES)
-AUX_SOURCE_DIRECTORY(src/Services/Audio SOURCES)
-AUX_SOURCE_DIRECTORY(src/Services/LocationService SOURCES)
-AUX_SOURCE_DIRECTORY(src/Services/TimeService SOURCES)
-AUX_SOURCE_DIRECTORY(src/SetupServer SOURCES)
-AUX_SOURCE_DIRECTORY(src/Speech SOURCES)
-AUX_SOURCE_DIRECTORY(src/State SOURCES)
-AUX_SOURCE_DIRECTORY(src/Util SOURCES)
+AUX_SOURCE_DIRECTORY(src/AudioLib SOURCES)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
 

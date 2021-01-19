@@ -6,7 +6,7 @@ class AudioGenerator
 {
 public:
 	virtual ~AudioGenerator() = default;
-	virtual void generate(int16_t *buffer) = 0;
+	virtual int generate(int16_t *outBuffer) = 0;
 	virtual int available() = 0;
 };
 
