@@ -8,6 +8,7 @@
 class AudioGeneratorWAV : public AudioSource
 {
 public:
+	AudioGeneratorWAV();
 	AudioGeneratorWAV(fs::File *file);
 	~AudioGeneratorWAV();
 	int generate(int16_t* outBuffer) override;
@@ -15,6 +16,8 @@ public:
 	int getBitsPerSample() override;
 	int getSampleRate() override;
 	int getChannels() override;
+
+	void open(fs::File *file);
 
 private:
 	fs::File *file;

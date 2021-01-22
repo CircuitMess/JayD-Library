@@ -22,29 +22,30 @@ AudioGeneratorConverter::~AudioGeneratorConverter()
 
 int AudioGeneratorConverter::generate(int16_t* outBuffer)
 {
-	int readSamples = source->generate((int16_t*)InBufs[0]);
+	int readSamples = source->generate((int16_t*)(InBufs[0].getPtr()));
+
 	//separate into 2 buffers if necessary
 	if(source->getChannels() == 2){
 		if(source->getBitsPerSample() == 16){
 			for(int32_t i = 0; i < readSamples/2; i++){
-				((int16_t*)(InBufs[1]))[i] = ((int16_t*)(InBufs[0]))[i + 1];
+				((int16_t*)(InBufs[1].getPtr()))[i] = ((int16_t*)(InBufs[0].getPtr()))[i + 1];
 				if(i > 0){
-					memmove(((int16_t*)(InBufs[0])) + i - 1, ((int16_t*)(InBufs[0])) + i, (readSamples - i*2)*sizeof(int16_t))
+					memmove(((int16_t*)(InBufs[0].getPtr())) + i - 1, ((int16_t*)(InBufs[0].getPtr())) + i, (readSamples - i*2)*sizeof(int16_t));
 				}
 			}
 		}else if(source->getBitsPerSample() == 32){
 			for(int32_t i = 0; i < readSamples/2; i++){
-				((int32_t*)(InBufs[1]))[i] = ((int32_t*)(InBufs[0]))[i + 1];
+				((int32_t*)(InBufs[1].getPtr()))[i] = ((int32_t*)(InBufs[0].getPtr()))[i + 1];
 				if(i > 0){
-					memmove(((int32_t*)(InBufs[0])) + i - 1, ((int32_t*)(InBufs[0])) + i, (readSamples - i*2)*sizeof(int32_t))
+					memmove(((int32_t*)(InBufs[0].getPtr())) + i - 1, ((int32_t*)(InBufs[0].getPtr())) + i, (readSamples - i*2)*sizeof(int32_t));
 				}
 			}
 		}
 		readSamples/=2;
 	}
 	
+	//resample to 44100Hz
 	int WriteCount;
-
 	if(source->getSampleRate() != outSampleRate){
 		double* opp[ source->getChannels() ];
 
@@ -54,10 +55,10 @@ int AudioGeneratorConverter::generate(int16_t* outBuffer)
 		}
 	}
 
-	if(source->getBitsPerSample() == 32){
+	// if(source->getBitsPerSample() == 32){
 		
-		for(int i = 0; i < readSamples; i++){
-			*(((int32_t*)InBufs[0]) + i) = *(((int32_t*)InBufs[0]) + i) >> 16;
-		}
-	}
+	// 	for(int i = 0; i < readSamples; i++){
+	// 		*(((int32_t*)InBufs[0]) + i) = *(((int32_t*)InBufs[0]) + i) >> 16;
+	// 	}
+	// }
 }
