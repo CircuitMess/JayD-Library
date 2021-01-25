@@ -133,6 +133,7 @@ void InputJayD::handleButtonEvent(uint8_t _id, uint8_t _value){
 	}
 	if(btnReleaseCallbacks[_id] != nullptr){
 		if(_value == 0){
+			btnHoldStart[_id] = 0;
 			btnReleaseCallbacks[_id]();
 		}
 
