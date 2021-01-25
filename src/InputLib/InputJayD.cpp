@@ -43,15 +43,6 @@ void InputJayD::setButtonHeldCallback(uint8_t _id, uint32_t holdTime, void (*cal
 	btnHoldValue[_id] = holdTime;
 }
 
-/*void InputJayD::setButtonHeldRepeatCallback(uint8_t _id, uint32_t periodTime, void (*callback)(uint)){
-	btnHoldRepeatCallbacks[_id] = callback;
-	btnHoldRepeatValue[_id] = periodTime;
-}
-
-uint32_t InputJayD::getButtonMillis(uint8_t _id){
-	return millis() - btnHoldStart[_id];
-}*/
-
 
 void InputJayD::setEncoderMovedCallback(uint8_t _id, void (*callback)(int8_t value)){
 	encMovedCallbacks[_id] = callback;

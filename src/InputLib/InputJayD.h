@@ -36,15 +36,6 @@ public:
 
 	virtual void setButtonHeldCallback(uint8_t _id, uint32_t holdTime, void (*callback)());
 
-	//virtual void setButtonHeldRepeatCallback(uint8_t _id, uint32_t periodTime, void (*callback)(uint));
-
-	//virtual uint32_t getButtonMillis(uint8_t _id);
-
-	//virtual void setAnyKeyCallback(void (*callback)(), bool returnAfterCallback = false);
-
-	//virtual void registerButton(uint8_t _id);
-	//virtual void preregisterButtons(Vector<uint8_t> pins);
-
 	virtual void setEncoderMovedCallback(uint8_t _id, void (*callback)(int8_t value));
 
 	virtual void removeEncoderMovedCallback(uint8_t _id);
@@ -65,8 +56,6 @@ public:
 	void handleEncoderEvent(uint8_t _id,uint8_t _value);
 	void handlePotentiometerEvent(uint8_t _id,uint8_t _value);
 
-
-	void separateDevice(Event &event);
 
 protected:
 
