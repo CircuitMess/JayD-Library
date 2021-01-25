@@ -6,9 +6,11 @@
 
 InputJayD *InputJayD::instance;
 
-InputJayD::InputJayD() : btnPressCallback(id, nullptr), btnReleaseCallback(id, nullptr),
-						 btnHoldRepeatCallback(id, nullptr), btnHoldCallback(id, nullptr), encMovedCallback(id, 0),
-						 btnHoldValue(id, 0), btnHoldRepeatValue(id, 0), btnHoldStart(id, 0), btnHoldOver(id, 0){
+InputJayD::InputJayD() : btnPressCallbacks(btnNum, nullptr), btnReleaseCallbacks(btnNum, nullptr),
+						 btnHoldRepeatCallbacks(btnNum, nullptr), btnHoldCallbacks(btnNum, nullptr),
+						 encMovedCallbacks(btnNum, nullptr),
+						 btnHoldValue(btnNum, 0), btnHoldStart(btnNum, 0),
+						 btnState(btnNum, 0){
 
 	Wire.begin(26, 27);
 
@@ -17,19 +19,19 @@ InputJayD::InputJayD() : btnPressCallback(id, nullptr), btnReleaseCallback(id, n
 }
 
 void InputJayD::setBtnPressCallback(uint8_t _id, void (*callback)()){
-	btnPressCallback[_id] = callback;
+	btnPressCallbacks[_id] = callback;
 }
 
 void InputJayD::setBtnReleaseCallback(uint8_t _id, void (*callback)()){
-	btnReleaseCallback[_id] = callback;
+	btnReleaseCallbacks[_id] = callback;
 }
 
 void InputJayD::removeBtnPressCallback(uint8_t _id){
-	btnPressCallback[_id] = nullptr;
+	btnPressCallbacks[_id] = nullptr;
 }
 
 void InputJayD::removeBtnReleaseCallback(uint8_t _id){
-	btnReleaseCallback[_id] = nullptr;
+	btnReleaseCallbacks[_id] = nullptr;
 }
 
 InputJayD *InputJayD::getInstance(){
@@ -37,113 +39,126 @@ InputJayD *InputJayD::getInstance(){
 }
 
 void InputJayD::setButtonHeldCallback(uint8_t _id, uint32_t holdTime, void (*callback)()){
-	btnHoldCallback[_id] = callback;
+	btnHoldCallbacks[_id] = callback;
 	btnHoldValue[_id] = holdTime;
 }
 
-void InputJayD::setButtonHeldRepeatCallback(uint8_t _id, uint32_t periodTime, void (*callback)(uint)){
-	btnHoldRepeatCallback[_id] = callback;
+/*void InputJayD::setButtonHeldRepeatCallback(uint8_t _id, uint32_t periodTime, void (*callback)(uint)){
+	btnHoldRepeatCallbacks[_id] = callback;
 	btnHoldRepeatValue[_id] = periodTime;
 }
 
 uint32_t InputJayD::getButtonMillis(uint8_t _id){
 	return millis() - btnHoldStart[_id];
-}
+}*/
 
 
 void InputJayD::setEncoderMovedCallback(uint8_t _id, void (*callback)(int8_t value)){
-	encMovedCallback[_id] = callback;
+	encMovedCallbacks[_id] = callback;
 }
 
 void InputJayD::removeEncoderMovedCallback(uint8_t _id){
-	encMovedCallback[_id] = nullptr;
+	encMovedCallbacks[_id] = nullptr;
 }
 
 void InputJayD::setPotMovedCallback(uint8_t _id, void (*callback)(uint8_t value)){
-	potMovedCallback[_id] = callback;
+	potMovedCallbacks[_id] = callback;
 }
 
 void InputJayD::removePotMovedCallback(uint8_t _id){
-	potMovedCallback[_id] = nullptr;
+	potMovedCallbacks[_id] = nullptr;
 }
 
-void InputJayD::loop(uint _time){
+uint8_t InputJayD::getNumEvents(){
 	Wire.beginTransmission(deviceAddr);
 	Wire.write(getEvents);
 	Wire.endTransmission();
-	//Wire.write(0x12);
 	Wire.requestFrom(deviceAddr, 2);
 	if(Wire.available()){
-		numEventsAddr = Wire.read();
-		Serial.println("slaveAddr");
-		Serial.println(numEventsAddr);
+		Wire.read();//addr
 	}
 	if(Wire.available()){
-		numEventsData = Wire.read();
-		Serial.println("numEvents");
-		Serial.println(numEventsData);
+		uint8_t numEventsData = Wire.read();
+		return numEventsData;
 	}
-	if(numEventsData > 0){
-		Wire.beginTransmission(deviceAddr);
-		Wire.write(sendEvents);
-		Wire.write(numEventsData);
-		Wire.endTransmission();
+}
 
-		Wire.requestFrom(deviceAddr, 2 * numEventsData + 1);
+void InputJayD::fetchEvents(int numEvents){
+	if(numEvents == 0) return;
+	Wire.beginTransmission(deviceAddr);
+	Wire.write(sendEvents);
+	Wire.write(numEvents);
+	Wire.endTransmission();
+	Wire.requestFrom(deviceAddr, 2 * numEvents + 1);
+	if(Wire.available()){
+		Wire.read();
+	}
+	std::vector<Event> events;
+	for(int i = numEvents; i > 0; i--){
 		if(Wire.available()){
-			outputAddr = Wire.read();
-			Serial.println("outputAddr");
-			Serial.println(outputAddr);
+			deviceId = Wire.read();
 		}
-		for(int i = numEventsData; i > 0; i--){
-			if(Wire.available()){
-				deviceId = Wire.read();
-				if(deviceId != temp){
-					temp = deviceId;
-					Serial.println("ovo je trenutni podatak");
-					Serial.println(temp);
-				}
-				//	Serial.println("deviceID");
-				//Serial.println(deviceId);
+		if(Wire.available()){
+			valueData = Wire.read();
+		}
+		id = deviceId & 0x0F;
+		device = deviceId >> 4;
+
+		events.push_back({(DeviceType) device, id, valueData});
+	}
+	for(Event event:events){
+		if(event.deviceType == BTN){
+			handleButtonEvent(event.deviceID, event.value);
+		}else if(event.deviceType == ENC){
+			handleEncoderEvent(event.deviceID, event.value);
+		}else if(event.deviceType == POT){
+			handlePotentiometerEvent(event.deviceID, event.value);
+		}
+	}
+}
+
+void InputJayD::handleButtonEvent(uint8_t _id, uint8_t _value){
+	if(btnPressCallbacks[_id] != nullptr){
+		if(_value == 1){
+			btnPressCallbacks[_id]();
+		}
+	}
+	if(btnHoldCallbacks[_id] != nullptr){
+		if(_value == 1){
+			btnHoldStart[_id] = millis();
+			if(btnHoldStart[_id] > btnHoldValue[_id]){
+				btnHoldCallbacks[_id]();
 			}
-			if(Wire.available()){
-				valueData = Wire.read();
-				Serial.println("outputData");
-				Serial.println(valueData);
-			}
-
-			id = deviceId & 0x0F;
-			Serial.println("id:");
-			Serial.println(id);
-			device = deviceId >> 4;
-			Serial.println("device:");
-			Serial.println(device);
-
-			/*if(device == 0){
-				if(btnPressCallback[id] != nullptr){
-					btnPressCallback[id]();
-					btnHoldStart[id] = millis();
-					if(btnHoldValue[id]==getButtonMillis(id)){
-						btnPressCallback[id]();
-					}
-				}else{
-					btnReleaseCallback[id]();
-				}
-
-			}else if(device == 1){
-				if(encMovedCallback[id] != 0){
-					encMovedCallback[id](valueData);
-				}
-			}else if(device == 2){
-				if(potMovedCallback[id] != 0){
-					potMovedCallback[id](valueData);
-				}
-			}*/
+		}
+	}
+	if(btnReleaseCallbacks[_id] != nullptr){
+		if(_value == 0){
+			btnReleaseCallbacks[_id]();
 		}
 
 	}
+}
+
+void InputJayD::handleEncoderEvent(uint8_t _id, uint8_t _value){
+	if(encMovedCallbacks[_id] != nullptr){
+		encMovedCallbacks[_id](_value);
+	}
+}
+
+void InputJayD::handlePotentiometerEvent(uint8_t _id, uint8_t _value){
+	if(potMovedCallbacks[_id] != nullptr){
+		potMovedCallbacks[_id](_value);
+	}
+}
+
+void InputJayD::loop(uint _time){
+	fetchEvents(getNumEvents());
 
 }
+
+
+
+
 
 
 
