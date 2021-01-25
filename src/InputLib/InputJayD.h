@@ -10,7 +10,15 @@
 #define deviceAddr 0x43
 #define getEvents 0x12
 #define sendEvents 0x13
+#define btnNum 9
 
+enum DeviceType{BTN,ENC,POT};
+
+struct Event{
+	DeviceType deviceType;
+	uint8_t deviceID;
+	int8_t value;
+};
 
 class InputJayD : public LoopListener {
 
@@ -28,14 +36,14 @@ public:
 
 	virtual void setButtonHeldCallback(uint8_t _id, uint32_t holdTime, void (*callback)());
 
-	virtual void setButtonHeldRepeatCallback(uint8_t _id, uint32_t periodTime, void (*callback)(uint));
+	//virtual void setButtonHeldRepeatCallback(uint8_t _id, uint32_t periodTime, void (*callback)(uint));
 
-	virtual uint32_t getButtonMillis(uint8_t _id);
+	//virtual uint32_t getButtonMillis(uint8_t _id);
 
-//	virtual void setAnyKeyCallback(void (*callback)(), bool returnAfterCallback = false);
+	//virtual void setAnyKeyCallback(void (*callback)(), bool returnAfterCallback = false);
 
 	//virtual void registerButton(uint8_t _id);
-//	virtual void preregisterButtons(Vector<uint8_t> pins);
+	//virtual void preregisterButtons(Vector<uint8_t> pins);
 
 	virtual void setEncoderMovedCallback(uint8_t _id, void (*callback)(int8_t value));
 
@@ -49,46 +57,37 @@ public:
 
 	void loop(uint _time) override;
 
-protected:
-	std::vector<void (*)()> btnPressCallback;
-	std::vector<void (*)()> btnReleaseCallback;
-	std::vector<void (*)()> btnHoldCallback;
-	std::vector<void (*)(uint)> btnHoldRepeatCallback;
-	std::vector<void (*)(int8_t)> encMovedCallback;
-	std::vector<void (*)(uint8_t)> potMovedCallback;
+	uint8_t getNumEvents();
 
+	void fetchEvents(int numEvents);
+
+	void handleButtonEvent(uint8_t _id,uint8_t _value);
+	void handleEncoderEvent(uint8_t _id,uint8_t _value);
+	void handlePotentiometerEvent(uint8_t _id,uint8_t _value);
+
+
+	void separateDevice(Event &event);
+
+protected:
+
+	std::vector<void (*)()> btnPressCallbacks;
+	std::vector<void (*)()> btnReleaseCallbacks;
+	std::vector<void (*)()> btnHoldCallbacks;
+	std::vector<void (*)(uint)> btnHoldRepeatCallbacks;
+	std::vector<void (*)(int8_t)> encMovedCallbacks;
+	std::vector<void (*)(uint8_t)> potMovedCallbacks;
 
 	std::vector<uint32_t> btnHoldValue;
-	std::vector<uint32_t> btnHoldRepeatValue;
 	std::vector<uint32_t> btnHoldStart;
-	std::vector<uint8_t> buttons;
-	std::vector<uint8_t> btnCount;
 	std::vector<uint8_t> btnState;
-	std::vector<bool> btnHoldOver;
-	std::vector<uint32_t> btnHoldRepeatCounter;
-	std::vector<int32_t> encoderValue;
-
-	void (*anyKeyCallback)(void);
-
-	bool anyKeyCallbackReturn;
-
 
 	static InputJayD *instance;
 
-	//virtual void scanButtons() = 0;
-	//void registerButton(uint8_t pin);
-
-
-	uint8_t numEventsAddr;
-	uint8_t numEventsData;
-	uint8_t outputAddr;
+	uint8_t deviceId;
 	int8_t valueData;
 	uint8_t device;
-	uint8_t deviceId;
 	uint8_t id;
-	uint8_t temp=0;
 };
-
 
 
 #endif //JAYD_LIBRARY_INPUTJAYD_H
