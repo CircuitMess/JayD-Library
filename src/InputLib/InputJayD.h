@@ -11,6 +11,9 @@
 #define getEvents 0x12
 #define sendEvents 0x13
 #define btnNum 9
+#define encNum 7
+#define potNum 3
+
 
 enum DeviceType {
 	BTN, ENC, POT
@@ -61,6 +64,8 @@ public:
 	void handlePotentiometerEvent(uint8_t id, uint8_t value);
 
 	void buttonHoldCheck();
+
+
 
 protected:
 
