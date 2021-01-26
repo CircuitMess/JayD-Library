@@ -6,10 +6,10 @@
 InputJayD *InputJayD::instance;
 
 InputJayD::InputJayD() : btnPressCallbacks(btnNum, nullptr), btnReleaseCallbacks(btnNum, nullptr),
-										btnHoldCallbacks(btnNum, nullptr),
-										encMovedCallbacks(encNum, nullptr),potMovedCallbacks(potNum, nullptr),
-										btnHoldValue(btnNum, 0), btnHoldStart(btnNum, 0),
-										wasPressed(btnNum, false){
+						 btnHoldCallbacks(btnNum, nullptr),
+						 encMovedCallbacks(encNum, nullptr), potMovedCallbacks(potNum, nullptr),
+						 btnHoldValue(btnNum, 0), btnHoldStart(btnNum, 0),
+						 wasPressed(btnNum, false){
 
 	Wire.begin(26, 27);
 
@@ -92,6 +92,7 @@ void InputJayD::fetchEvents(int numEvents){
 		}
 		if(Wire.available()){
 			valueData = Wire.read();
+
 		}
 		uint8_t id = deviceId & 0x0F;
 		uint8_t device = deviceId >> 4;
@@ -117,30 +118,26 @@ void InputJayD::handleButtonEvent(uint8_t id, uint8_t value){
 	}
 	if(btnReleaseCallbacks[id] != nullptr){
 		if(value == 0){
-			btnHoldStart[id] = 0;//makni u else
+			btnHoldStart[id] = 0;
 			wasPressed[id] = false;
 			btnReleaseCallbacks[id]();
 		}
 
 	}
-
 }
 
 void InputJayD::buttonHoldCheck(){
 	for(uint8_t i = 0; i < btnHoldCallbacks.size(); i++){
-		if(btnHoldCallbacks[i] != nullptr){
-			if(millis() - btnHoldStart[i] >= btnHoldValue[i]){
-				if(!wasPressed[i]){
-					btnHoldCallbacks[i]();
-					wasPressed[i] = true;
-				}
-			}
+		if(btnHoldCallbacks[i] == nullptr) continue;
+		if(btnHoldStart[i] == 0) continue;
+		if(millis() - btnHoldStart[i] >= btnHoldValue[i] && !wasPressed[i]){
+			btnHoldCallbacks[i]();
+			wasPressed[i] = true;
 		}
-
 	}
 }
 
-void InputJayD::handleEncoderEvent(uint8_t id, uint8_t value){
+void InputJayD::handleEncoderEvent(uint8_t id, int8_t value){
 	if(encMovedCallbacks[id] != nullptr){
 		encMovedCallbacks[id](value);
 	}
