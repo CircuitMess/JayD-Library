@@ -6,10 +6,10 @@
 InputJayD *InputJayD::instance;
 
 InputJayD::InputJayD() : btnPressCallbacks(btnNum, nullptr), btnReleaseCallbacks(btnNum, nullptr),
-						 btnHoldCallbacks(btnNum, nullptr),
-						 encMovedCallbacks(btnNum, nullptr),
-						 btnHoldValue(btnNum, 0), btnHoldStart(btnNum, 0),
-						 wasPressed(btnNum, false){
+										btnHoldCallbacks(btnNum, nullptr),
+										encMovedCallbacks(encNum, nullptr),potMovedCallbacks(potNum, nullptr),
+										btnHoldValue(btnNum, 0), btnHoldStart(btnNum, 0),
+										wasPressed(btnNum, false){
 
 	Wire.begin(26, 27);
 
@@ -95,7 +95,6 @@ void InputJayD::fetchEvents(int numEvents){
 		}
 		uint8_t id = deviceId & 0x0F;
 		uint8_t device = deviceId >> 4;
-
 		events.push_back({(DeviceType) device, id, valueData});
 	}
 	for(Event event:events){
