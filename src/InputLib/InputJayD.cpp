@@ -127,6 +127,20 @@ void InputJayD::handleButtonEvent(uint8_t id, uint8_t value){
 
 }
 
+void InputJayD::buttonHoldCheck(){
+	for(uint8_t i = 0; i < btnHoldCallbacks.size(); i++){
+		if(btnHoldCallbacks[i] != nullptr){
+			if(millis() - btnHoldStart[i] >= btnHoldValue[i]){
+				if(!wasPressed[i]){
+					btnHoldCallbacks[i]();
+					wasPressed[i] = true;
+				}
+			}
+		}
+
+	}
+}
+
 void InputJayD::handleEncoderEvent(uint8_t id, uint8_t value){
 	if(encMovedCallbacks[id] != nullptr){
 		encMovedCallbacks[id](value);
@@ -141,18 +155,8 @@ void InputJayD::handlePotentiometerEvent(uint8_t id, uint8_t value){
 
 void InputJayD::loop(uint _time){
 	fetchEvents(getNumEvents());
+	buttonHoldCheck();
 
-	for(uint8_t i = 0; i < btnHoldCallbacks.size(); i++){
-		if(btnHoldCallbacks[i] != nullptr){
-			if(millis() - btnHoldStart[i] >= btnHoldValue[i]){
-				if(!wasPressed[i]){
-					btnHoldCallbacks[i]();
-					wasPressed[i] = true;
-				}
-			}
-		}
-
-	}
 }
 
 

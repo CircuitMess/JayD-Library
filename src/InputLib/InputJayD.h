@@ -12,9 +12,11 @@
 #define sendEvents 0x13
 #define btnNum 9
 
-enum DeviceType{BTN,ENC,POT};
+enum DeviceType {
+	BTN, ENC, POT
+};
 
-struct Event{
+struct Event {
 	DeviceType deviceType;
 	uint8_t deviceID;
 	int8_t value;
@@ -52,9 +54,13 @@ public:
 
 	void fetchEvents(int numEvents);
 
-	void handleButtonEvent(uint8_t id,uint8_t value);
-	void handleEncoderEvent(uint8_t id,uint8_t value);
-	void handlePotentiometerEvent(uint8_t id,uint8_t value);
+	void handleButtonEvent(uint8_t id, uint8_t value);
+
+	void handleEncoderEvent(uint8_t id, uint8_t value);
+
+	void handlePotentiometerEvent(uint8_t id, uint8_t value);
+
+	void buttonHoldCheck();
 
 protected:
 
@@ -70,7 +76,6 @@ protected:
 	std::vector<bool> wasPressed;
 
 	static InputJayD *instance;
-
 
 
 };
