@@ -61,14 +61,14 @@ protected:
 	std::vector<void (*)()> btnPressCallbacks;
 	std::vector<void (*)()> btnReleaseCallbacks;
 	std::vector<void (*)()> btnHoldCallbacks;
-	std::vector<void (*)(uint)> btnHoldRepeatCallbacks;
+	//std::vector<void (*)(uint)> btnHoldRepeatCallbacks;
 	std::vector<void (*)(int8_t)> encMovedCallbacks;
 	std::vector<void (*)(uint8_t)> potMovedCallbacks;
 
 	std::vector<uint32_t> btnHoldValue;
 	std::vector<uint32_t> btnHoldStart;
 	std::vector<bool> wasPressed;
-+
+
 	static InputJayD *instance;
 
 
