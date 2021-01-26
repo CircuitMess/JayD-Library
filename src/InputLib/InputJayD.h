@@ -26,23 +26,23 @@ public:
 
 	InputJayD();
 
-	virtual void setBtnPressCallback(uint8_t _id, void(*callback)());
+	virtual void setBtnPressCallback(uint8_t id, void(*callback)());
 
-	virtual void setBtnReleaseCallback(uint8_t _id, void (*callback)());
+	virtual void setBtnReleaseCallback(uint8_t id, void (*callback)());
 
-	virtual void removeBtnPressCallback(uint8_t _id);
+	virtual void removeBtnPressCallback(uint8_t id);
 
-	virtual void removeBtnReleaseCallback(uint8_t _id);
+	virtual void removeBtnReleaseCallback(uint8_t id);
 
-	virtual void setButtonHeldCallback(uint8_t _id, uint32_t holdTime, void (*callback)());
+	virtual void setButtonHeldCallback(uint8_t id, uint32_t holdTime, void (*callback)());
 
-	virtual void setEncoderMovedCallback(uint8_t _id, void (*callback)(int8_t value));
+	virtual void setEncoderMovedCallback(uint8_t id, void (*callback)(int8_t value));
 
-	virtual void removeEncoderMovedCallback(uint8_t _id);
+	virtual void removeEncoderMovedCallback(uint8_t id);
 
-	virtual void setPotMovedCallback(uint8_t _id, void (*callback)(uint8_t value));
+	virtual void setPotMovedCallback(uint8_t id, void (*callback)(uint8_t value));
 
-	virtual void removePotMovedCallback(uint8_t _id);
+	virtual void removePotMovedCallback(uint8_t id);
 
 	static InputJayD *getInstance();
 
@@ -52,10 +52,9 @@ public:
 
 	void fetchEvents(int numEvents);
 
-	void handleButtonEvent(uint8_t _id,uint8_t _value);
-	void handleEncoderEvent(uint8_t _id,uint8_t _value);
-	void handlePotentiometerEvent(uint8_t _id,uint8_t _value);
-
+	void handleButtonEvent(uint8_t id,uint8_t value);
+	void handleEncoderEvent(uint8_t id,uint8_t value);
+	void handlePotentiometerEvent(uint8_t id,uint8_t value);
 
 protected:
 
@@ -68,14 +67,12 @@ protected:
 
 	std::vector<uint32_t> btnHoldValue;
 	std::vector<uint32_t> btnHoldStart;
-	std::vector<uint8_t> btnState;
-
+	std::vector<bool> wasPressed;
++
 	static InputJayD *instance;
 
-	uint8_t deviceId;
-	int8_t valueData;
-	uint8_t device;
-	uint8_t id;
+
+
 };
 
 
