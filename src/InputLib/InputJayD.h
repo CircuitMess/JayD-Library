@@ -59,7 +59,7 @@ public:
 
 	void handleButtonEvent(uint8_t id, uint8_t value);
 
-	void handleEncoderEvent(uint8_t id, uint8_t value);
+	void handleEncoderEvent(uint8_t id, int8_t value);
 
 	void handlePotentiometerEvent(uint8_t id, uint8_t value);
 
