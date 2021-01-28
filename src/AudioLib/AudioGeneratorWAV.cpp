@@ -40,23 +40,24 @@ AudioGeneratorWAV::~AudioGeneratorWAV(){
 void AudioGeneratorWAV::readHeader(){
 	char *buffer = (char*)malloc(sizeof(wavHeader));
 	file->readBytes(buffer, sizeof(wavHeader));
+	
 	wavHeader *header = (wavHeader*)buffer;
-	if(strcmp(header->RIFF, "RIFF") != 1){
+	if(memcmp(header->RIFF, "RIFF", 4) != 0){
 		Serial.println("Error, couldn't find RIFF ID");
 		free(buffer);
 		return;
 	}
-	if(strcmp(header->WAVE, "WAVE") != 1){
+	if(memcmp(header->WAVE, "WAVE", 4) != 0){
 		Serial.println("Error, couldn't find WAVE ID");
 		free(buffer);
 		return;
 	}
-	if(strcmp(header->fmt, "fmt") != 1){
+	if(memcmp(header->fmt, "fmt", 3) != 0){
 		Serial.println("Error, couldn't find fmt ID");
 		free(buffer);
 		return;
 	}
-	if(strcmp(header->data, "data") != 1){
+	if(memcmp(header->data, "data", 4) != 0){
 		Serial.println("Error, couldn't find data ID");
 		free(buffer);
 		return;
@@ -72,8 +73,14 @@ void AudioGeneratorWAV::readHeader(){
 }
 
 int AudioGeneratorWAV::generate(int16_t *outBuffer){
-	if(file == nullptr) return 0;
-	if(!file) return 0;
+	if(file == nullptr){
+		Serial.println("file nullptr");
+		return 0;
+	}
+	if(!file){
+		Serial.println("file false");
+		return 0;
+	}
 
 	if(sampleRate == 0){
 		readHeader();
@@ -99,4 +106,8 @@ void AudioGeneratorWAV::open(fs::File *_file){
 	
 	file = _file;
 	channels, sampleRate, bitsPerSample = 0;
+}
+
+int AudioGeneratorWAV::available(){
+	return file->available();
 }

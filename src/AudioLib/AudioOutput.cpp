@@ -24,9 +24,8 @@ void AudioOutput::setSource(AudioGenerator* generator){
 void AudioOutput::loop(uint _time){
 	if(generator != nullptr){
 		int receivedSamples = generator->generate(inBuffer);
-
-		for(uint32_t i = 0; i < receivedSamples; i++){
-			*(inBuffer + i) = ((float)*(inBuffer + i)) * gain;
+		for(uint32_t i = 0; i < receivedSamples/sizeof(int16_t); i++){
+			*(inBuffer + i) = static_cast<int16_t>((*(inBuffer + i)) * gain);
 		}
 	}
 	output();
@@ -46,8 +45,8 @@ bool AudioOutput::isRunning(){
 	return running;
 }
 
-void AudioOutput::setGain(float gain){
-	this->gain = gain;
+void AudioOutput::setGain(float _gain){
+	gain = _gain;
 }
 
 float AudioOutput::getGain(){
