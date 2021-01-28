@@ -12,6 +12,7 @@ public:
 	AudioGeneratorWAV(fs::File *file);
 	~AudioGeneratorWAV();
 	int generate(int16_t* outBuffer) override;
+	int available() override;
 
 	int getBitsPerSample() override;
 	int getSampleRate() override;
