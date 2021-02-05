@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include <FS.h>
 #include "AudioSource.h"
-#include "OpenMP3/openmp3.h"
 
 class AudioGeneratorMP3 : public AudioSource
 {
@@ -27,10 +26,6 @@ private:
 	uint8_t channels;
 	uint32_t sampleRate;
 	uint8_t bitsPerSample;
-
-	OpenMP3::Library openmp3;
-	OpenMP3::Decoder decoder;
-	OpenMP3::Frame frame;
 };
 
 
