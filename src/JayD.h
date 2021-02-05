@@ -7,6 +7,7 @@
 #include "AudioLib/AudioMixer.h"
 #include "AudioLib/AudioGeneratorConverter.h"
 #include "AudioLib/AudioGeneratorWAV.h"
+#include "AudioLib/AudioGeneratorMP3.h"
 #include "AudioLib/AudioOutputI2S.h"
 
 #endif

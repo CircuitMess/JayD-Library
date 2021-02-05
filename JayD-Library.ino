@@ -7,6 +7,7 @@
 #include <SerialFlash.h>
 #include <Devices/SerialFlash/SerialFlashFileAdapter.h>
 
+
 const i2s_config_t i2s_config = {
 	.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX), // Receive and transfer
 	.sample_rate = 16000,                         // 44.1KHz
@@ -40,7 +41,8 @@ void setup(){
 	}
 
 	output = new AudioOutputI2S(i2s_config, spencer_pin_config, 0);
-	output->setSource(new AudioGeneratorWAV(new fs::File(fs::FileImplPtr(new SerialFlashFileAdapter("joke.wav")))));
+	// output->setSource(new AudioGeneratorWAV(new fs::File(fs::FileImplPtr(new SerialFlashFileAdapter("joke.wav")))));
+	output->setSource(new AudioGeneratorMP3(new fs::File(fs::FileImplPtr(new SerialFlashFileAdapter("joke.mp3")))));
 
 	output->start();
 	output->setGain(0.05);
