@@ -3,20 +3,24 @@
 
 #include <Arduino.h>
 #include "AudioGenerator.h"
+#include "AudioSource.h"
 
 class AudioMixer : public AudioGenerator
 {
 public:
 	AudioMixer();
 	~AudioMixer();
-	void addGenerator(AudioGenerator* generator);
 	int generate(int16_t* outBuffer) override;
+	int available() override;
+
+	void addSource(AudioSource* source);
 	uint8_t getMixRatio();
 	void setMixRatio(uint8_t ratio);
+	
 private:
-	std::vector<AudioGenerator*> generatorList;
+	std::vector<AudioSource*> sourceList;
 	std::vector<int16_t*> bufferList;
-	uint8_t mixRatio;
+	uint8_t mixRatio; //half-half by default, 0 = only first track, 255 = only second track
 };
 
 

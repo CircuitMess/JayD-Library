@@ -1,6 +1,15 @@
 #include "AudioMixer.h"
 
-AudioMixer::AudioMixer()
+//clipping wave to avoid overflows
+int16_t clip(int32_t input){ 
+
+    if (input > 0x7FFF) return 0x7FFFF;
+    if (input < - 0x7FFF) return -0x7FFF;
+    return input;
+}
+
+
+AudioMixer::AudioMixer() : mixRatio(122)
 {
 }
 
@@ -11,24 +20,19 @@ AudioMixer::~AudioMixer()
 			free(buffer);
 		}
 	}
-	for(AudioGenerator* generator : generatorList){
+	for(auto generator : sourceList){
 		if(generator != nullptr){
 			delete generator;
 		}
 	}
 }
 
-void AudioMixer::addGenerator(AudioGenerator* generator){
-	generatorList.push_back(generator);
-	bufferList.push_back((int16_t*)calloc(800, sizeof(int16_t)));
-}
-
 int AudioMixer::generate(int16_t *outBuffer){
 	memset(outBuffer, 0, 800*sizeof(int16_t));
-	int receivedSamples[generatorList.size()] = {0};
+	int receivedSamples[sourceList.size()] = {0};
 
-	for(uint8_t i = 0; i < generatorList.size(); i++){
-		AudioGenerator* generator = generatorList[i];
+	for(uint8_t i = 0; i < sourceList.size(); i++){
+		AudioGenerator* generator = sourceList[i];
 		int16_t* buffer = bufferList[i];
 		if(generator != nullptr && buffer != nullptr){
 			receivedSamples[i] = generator->generate(buffer);
@@ -36,11 +40,39 @@ int AudioMixer::generate(int16_t *outBuffer){
 	}
 
 	for(uint16_t i = 0; i < 800; i++){
-		for(int16_t* buffer : bufferList){
-			if(buffer != nullptr){
-				outBuffer[i]+=buffer[i];
+		int32_t wave = 0;
+		for(uint8_t j = 0; j < sourceList.size(); j++){
+			if(bufferList[j] != nullptr && (receivedSamples[j] / sizeof(int16_t)) > i){
+				if(sourceList.size() == 2){
+					wave += bufferList[j][i] * (float)((j == 1 ? (float)(mixRatio) : (float)(255.0 - mixRatio))/255.0); //use the mixer if only 2 tracks found
+				}else{
+					wave += bufferList[j][i] * (float)(1.0/(float)(sourceList.size())); // evenly distribute all tracks
+				}
 			}
 		}
+		outBuffer[i] = clip(wave);
 	}
-	return *std::max_element(receivedSamples, receivedSamples + generatorList.size());
+	size_t longestBuffer = *std::max_element(receivedSamples, receivedSamples + sourceList.size());
+	return longestBuffer;
+}
+
+int AudioMixer::available(){
+	int available = 0;
+	for(uint8_t i = 0; i < sourceList.size(); i++){
+		available = max(available, sourceList[i]->available());
+	}
+	return available;
+}
+
+void AudioMixer::addSource(AudioSource* generator){
+	sourceList.push_back(generator);
+	bufferList.push_back((int16_t*)calloc(800, sizeof(int16_t)));
+}
+
+void AudioMixer::setMixRatio(uint8_t ratio){
+	mixRatio = ratio;
+}
+
+uint8_t AudioMixer::getMixRatio(){
+	return uint8_t(mixRatio);
 }
