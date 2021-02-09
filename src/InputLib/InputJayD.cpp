@@ -96,6 +96,7 @@ void InputJayD::fetchEvents(int numEvents){
 		}
 		uint8_t id = deviceId & 0x0F;
 		uint8_t device = deviceId >> 4;
+
 		events.push_back({(DeviceType) device, id, valueData});
 	}
 	for(Event event:events){
@@ -110,19 +111,20 @@ void InputJayD::fetchEvents(int numEvents){
 }
 
 void InputJayD::handleButtonEvent(uint8_t id, uint8_t value){
-	btnHoldStart[id] = millis();
-	if(btnPressCallbacks[id] != nullptr){
-		if(value == 1){
+	if(value == 1){
+		btnHoldStart[id] = millis();
+		if(btnPressCallbacks[id] != nullptr){
 			btnPressCallbacks[id]();
 		}
 	}
-	if(btnReleaseCallbacks[id] != nullptr){
-		if(value == 0){
-			btnHoldStart[id] = 0;
-			wasPressed[id] = false;
+
+	if(value == 0){
+		btnHoldStart[id] = 0;
+		wasPressed[id] = false;
+
+		if(btnReleaseCallbacks[id] != nullptr){
 			btnReleaseCallbacks[id]();
 		}
-
 	}
 }
 
