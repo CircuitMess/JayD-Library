@@ -7,15 +7,11 @@
 #include "../Bitmaps/Image3.hpp"
 #include "../Bitmaps/Image4.hpp"
 
-const uint16_t *icons[] = {Image1, Image2, Image3, Image3};
+const uint16_t *icons[] = {image1, image2, image3, image4};
 
 UITest *UITest::instance = nullptr;
 
-UITest::UITest(Display &display) : Context(display), menu(&screen, 2)/*,
-								   image1(&menu, 18, 18), image2(&menu, 18, 18), image3(&menu, 18, 18),
-								   image4(&menu, 18, 18)*/{
-
-
+UITest::UITest(Display &display) : Context(display), menu(&screen, 2){
 	instance = this;
 	buildUI();
 
@@ -25,7 +21,8 @@ UITest::UITest(Display &display) : Context(display), menu(&screen, 2)/*,
 void UITest::start(){
 	draw();
 	screen.commit();
-	InputJayD::getInstance()->setEncoderMovedCallback(0, [](int8_t value){
+
+	InputJayD::getInstance()->setEncoderMovedCallback(1, [](int8_t value){
 		if(value > 0){
 			instance->selectNext();
 		}else if(value < 0){
@@ -36,11 +33,11 @@ void UITest::start(){
 }
 
 void UITest::stop(){
-	InputJayD::getInstance()->removeEncoderMovedCallback(0);
+	InputJayD::getInstance()->removeEncoderMovedCallback(1);
 }
 
 void UITest::draw(){
-	screen.getSprite()->clear(TFT_DARKGREY);
+	screen.getSprite()->clear(TFT_BLACK);
 	screen.draw();
 }
 
@@ -50,22 +47,25 @@ void UITest::selectNext(){
 	appIcons[selectedIcon].setSelected(true);
 
 	menu.draw();
-	//screen.commit();
+	screen.commit();
 }
 
 void UITest::selectPrev(){
 	appIcons[selectedIcon].setSelected(false);
 	selectedIcon = selectedIcon == 0 ? appIcons.size() - 1 : selectedIcon - 1;
 	appIcons[selectedIcon].setSelected(true);
+
+	menu.draw();
+	screen.commit();
 }
 
 void UITest::buildUI(){
-	menu.setWHType(PARENT, PARENT);
-	menu.setGutter(5);
-	menu.setPadding(15);
+	menu.setWHType(PARENT, FIXED);
+	menu.setHeight(120);
+	menu.setGutter(30);
+	menu.setPadding(10);
 
-	appIcons.reserve(sizeof(icons) /
-					 sizeof(icons[0]));//zahtjev za promjenu kapaciteta vektora, da bude velik barem onoliko koliko postoj elemenata u polju
+	appIcons.reserve(sizeof(icons) /sizeof(icons[0]));//zahtjev za promjenu kapaciteta vektora, da bude velik barem onoliko koliko postoj elemenata u polju
 	for(const auto &icon : icons){
 		appIcons.emplace_back(&menu, icon);
 		menu.addChild(&appIcons.back());

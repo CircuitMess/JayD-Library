@@ -29,11 +29,6 @@ private:
 
 	GridLayout menu;
 
-	/*Image image1;
-	Image image2;
-	Image image3;
-	Image image4;*/
-
 	std::vector<AppIcon> appIcons;
 
 	uint8_t selectedIcon=0;
