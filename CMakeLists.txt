@@ -36,8 +36,15 @@ include_directories(${ArduinoLibs}/CircuitOS/src)
 #include_directories(${ArduinoLibs}/CircuitOS/src/Devices/LEDmatrix)
 include_directories(${ArduinoLibs}/TFT_eSPI)
 include_directories(${ArduinoLibs}/TFT_eSPI/Extensions)
-include_directories(${ArduinoLibs}/ESP8266Audio/src)
 
+
+
+
+
+
+
+AUX_SOURCE_DIRECTORY(src SOURCES)
+AUX_SOURCE_DIRECTORY(src/AudioLib SOURCES)
 
 
 
