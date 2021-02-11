@@ -39,7 +39,9 @@ public:
 
 	virtual void removeBtnReleaseCallback(uint8_t id);
 
-	virtual void setButtonHeldCallback(uint8_t id, uint32_t holdTime, void (*callback)());
+	virtual void setBtnHeldCallback(uint8_t id, uint32_t holdTime, void (*callback)());
+
+	virtual void removeBtnHeldCallback(uint8_t id);
 
 	virtual void setEncoderMovedCallback(uint8_t id, void (*callback)(int8_t value));
 

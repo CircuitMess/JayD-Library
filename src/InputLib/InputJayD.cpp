@@ -37,9 +37,12 @@ InputJayD *InputJayD::getInstance(){
 	return instance;
 }
 
-void InputJayD::setButtonHeldCallback(uint8_t id, uint32_t holdTime, void (*callback)()){
+void InputJayD::setBtnHeldCallback(uint8_t id, uint32_t holdTime, void (*callback)()){
 	btnHoldCallbacks[id] = callback;
 	btnHoldValue[id] = holdTime;
+}
+void InputJayD::removeBtnHeldCallback(uint8_t id){
+	btnHoldCallbacks[id] = nullptr;
 }
 
 
