@@ -23,21 +23,24 @@ void AudioOutput::setSource(AudioGenerator* generator){
 }
 
 void AudioOutput::loop(uint _time){
+	size_t receivedBytes = 0;
 	if(generator != nullptr){
-		int receivedSamples = generator->generate(inBuffer);
-		if(receivedSamples == 0 && running){
+		receivedBytes = generator->generate(inBuffer);
+		if(receivedBytes == 0 && running){
 			stop();
 			running = false;
 			return;
-		} else if(!running){
+		} else if(receivedBytes != 0 && !running){
 			start();
 			running = true;
 		}
-		for(uint32_t i = 0; i < receivedSamples/sizeof(int16_t); i++){
+		for(uint32_t i = 0; i < receivedBytes/sizeof(int16_t); i++){
 			*(inBuffer + i) = static_cast<int16_t>((*(inBuffer + i)) * gain);
 		}
 	}
-	output();
+	if(running){
+		output(receivedBytes);
+	}
 }
 
 bool AudioOutput::isRunning(){

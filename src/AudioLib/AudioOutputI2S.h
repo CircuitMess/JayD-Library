@@ -10,7 +10,7 @@ public:
 	~AudioOutputI2S();
 
 protected:
-	void output() override;
+	void output(size_t numBytes) override;
 	void start() override;
 	void stop() override;
 

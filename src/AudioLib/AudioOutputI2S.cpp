@@ -7,9 +7,9 @@ AudioOutputI2S::AudioOutputI2S(i2s_config_t config, i2s_pin_config_t pins, int _
 AudioOutputI2S::~AudioOutputI2S(){
 }
 
-void AudioOutputI2S::output(){
+void AudioOutputI2S::output(size_t numBytes){
 	size_t bytesWritten;
-	i2s_write(I2S_NUM_0, inBuffer, 800*sizeof(int16_t), &bytesWritten, portMAX_DELAY);
+	i2s_write(I2S_NUM_0, inBuffer, numBytes, &bytesWritten, portMAX_DELAY);
 }
 
 void AudioOutputI2S::start(){

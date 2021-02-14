@@ -18,7 +18,7 @@ public:
 	bool isRunning();
 
 protected:
-	virtual void output() = 0;
+	virtual void output(size_t numBytes) = 0;
 	virtual void stop() = 0;
 	virtual void start() = 0;
 	int16_t *inBuffer;

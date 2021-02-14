@@ -9,5 +9,6 @@
 #include "AudioLib/AudioGeneratorWAV.h"
 #include "AudioLib/AudioGeneratorMP3.h"
 #include "AudioLib/AudioOutputI2S.h"
+#include "AudioLib/AudioOutputFS.h"
 
 #endif
