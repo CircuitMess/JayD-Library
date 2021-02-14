@@ -11,13 +11,13 @@ public:
 
 protected:
 	void output() override;
+	void start() override;
+	void stop() override;
 
 private:
 	i2s_config_t config;
 	i2s_pin_config_t pins;
 	int port;
-
-	void i2sBegin();
 };
 
 

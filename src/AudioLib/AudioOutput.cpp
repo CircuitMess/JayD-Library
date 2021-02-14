@@ -12,6 +12,7 @@ AudioOutput::AudioOutput() :
 }
 
 AudioOutput::~AudioOutput(){
+	LoopManager::removeListener(this);
 	if(inBuffer != nullptr){
 		free(inBuffer);
 	}
@@ -24,25 +25,19 @@ void AudioOutput::setSource(AudioGenerator* generator){
 void AudioOutput::loop(uint _time){
 	if(generator != nullptr){
 		int receivedSamples = generator->generate(inBuffer);
-		if(receivedSamples == 0){
+		if(receivedSamples == 0 && running){
 			stop();
+			running = false;
 			return;
+		} else if(!running){
+			start();
+			running = true;
 		}
 		for(uint32_t i = 0; i < receivedSamples/sizeof(int16_t); i++){
 			*(inBuffer + i) = static_cast<int16_t>((*(inBuffer + i)) * gain);
 		}
 	}
 	output();
-}
-
-void AudioOutput::stop(){
-	running = false;
-	LoopManager::removeListener(this);
-}
-
-void AudioOutput::start(){
-	running = true;
-	LoopManager::addListener(this);
 }
 
 bool AudioOutput::isRunning(){

@@ -12,14 +12,15 @@ public:
 	~AudioOutput();
 	void setSource(AudioGenerator* gen);
 	void loop(uint _time) override;
-	void stop();
-	void start();
+
 	void setGain(float gain);
 	float getGain();
 	bool isRunning();
 
 protected:
 	virtual void output() = 0;
+	virtual void stop() = 0;
+	virtual void start() = 0;
 	int16_t *inBuffer;
 
 private:
