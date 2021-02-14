@@ -6,7 +6,7 @@ struct wavHeader{
 	char RIFF[4];
 	uint32_t chunkSize;
 	char WAVE[4];
-	char fmt[3];
+	char fmt[4];
 	uint32_t fmtSize;
 	uint16_t audioFormat;
 	uint16_t numChannels;
@@ -52,7 +52,7 @@ void AudioGeneratorWAV::readHeader(){
 		free(buffer);
 		return;
 	}
-	if(memcmp(header->fmt, "fmt", 3) != 0){
+	if(memcmp(header->fmt, "fmt ", 4) != 0){
 		Serial.println("Error, couldn't find fmt ID");
 		free(buffer);
 		return;
