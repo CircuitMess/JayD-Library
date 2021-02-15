@@ -20,6 +20,10 @@ public:
 
 	void open(fs::File *file);
 
+
+	uint32_t duration;
+	float elapsed;
+
 private:
 	fs::File *file;
 

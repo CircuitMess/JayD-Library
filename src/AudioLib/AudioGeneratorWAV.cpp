@@ -31,7 +31,7 @@ AudioGeneratorWAV::AudioGeneratorWAV() : file(nullptr), channels(0), sampleRate(
 }
 
 AudioGeneratorWAV::AudioGeneratorWAV(fs::File *_file) : AudioGeneratorWAV(){
-	file = _file;
+	open(_file);
 }
 
 AudioGeneratorWAV::~AudioGeneratorWAV(){
@@ -41,7 +41,7 @@ void AudioGeneratorWAV::readHeader(){
 	char *buffer = (char*)malloc(sizeof(wavHeader));
 	file->readBytes(buffer, sizeof(wavHeader));
 	
-	wavHeader *header = (wavHeader*)buffer;
+	wavHeader *header = (wavHeader*) buffer;
 	if(memcmp(header->RIFF, "RIFF", 4) != 0){
 		Serial.println("Error, couldn't find RIFF ID");
 		free(buffer);
@@ -59,16 +59,24 @@ void AudioGeneratorWAV::readHeader(){
 	}
 	if(memcmp(header->data, "data", 4) != 0){
 		Serial.println("Error, couldn't find data ID");
+		*(header->data + 4) = 0;
+		Serial.println(header->data);
 		free(buffer);
 		return;
 	}
 
-	endian_swap(header->numChannels);
+	//endian_swap(header->numChannels);
 	channels = header->numChannels;
-	endian_swap(header->sampleRate);
+	//endian_swap(header->sampleRate);
 	sampleRate = header->sampleRate;
-	endian_swap(header->bitsPerSample);
+	//endian_swap(header->bitsPerSample);
 	bitsPerSample = header->bitsPerSample;
+
+	duration = header->dataSize / (sampleRate * channels * bitsPerSample / 8);
+	elapsed = 0;
+
+	//file->seek(0.9f * duration * sampleRate * channels * bitsPerSample / 8);
+
 	free(buffer);
 }
 
@@ -82,9 +90,7 @@ int AudioGeneratorWAV::generate(int16_t *outBuffer){
 		return 0;
 	}
 
-	if(sampleRate == 0){
-		readHeader();
-	}
+	elapsed += (800.0f / (float) sampleRate);
 
 	return file->read((uint8_t*)outBuffer, 800*sizeof(int16_t));
 }
@@ -106,6 +112,8 @@ void AudioGeneratorWAV::open(fs::File *_file){
 	
 	file = _file;
 	channels, sampleRate, bitsPerSample = 0;
+
+	readHeader();
 }
 
 int AudioGeneratorWAV::available(){

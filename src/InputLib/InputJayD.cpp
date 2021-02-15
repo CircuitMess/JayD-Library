@@ -86,6 +86,9 @@ void InputJayD::fetchEvents(int numEvents){
 	std::vector<Event> events;
 	uint8_t deviceId;
 	int8_t valueData;
+
+	Serial.printf("%d events\n", numEvents);
+
 	for(int i = numEvents; i > 0; i--){
 		if(Wire.available()){
 			deviceId = Wire.read();
@@ -104,6 +107,8 @@ void InputJayD::fetchEvents(int numEvents){
 		}else if(event.deviceType == ENC){
 			handleEncoderEvent(event.deviceID, event.value);
 		}else if(event.deviceType == POT){
+			Serial.println("pot");
+			Serial.println(event.deviceID);
 			handlePotentiometerEvent(event.deviceID, event.value);
 		}
 	}
@@ -155,9 +160,30 @@ void InputJayD::loop(uint _time){
 
 }
 
+bool InputJayD::begin(){
+	Wire.beginTransmission(deviceAddr);
+	if(Wire.endTransmission() != 0){
+		instance = nullptr;
+		return false;
+	}
+
+	reset();
+	delay(50);
+	return identify();
+}
 
 
+void InputJayD::reset(){
+	Wire.beginTransmission(deviceAddr);
+	Wire.write(1);
+	Wire.endTransmission();
+}
 
+bool InputJayD::identify(){
+	Wire.beginTransmission(deviceAddr);
+	Wire.write(0);
+	Wire.endTransmission();
 
-
-
+	Wire.requestFrom(deviceAddr, 1);
+	return Wire.read() == deviceAddr;
+}

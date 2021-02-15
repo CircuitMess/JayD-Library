@@ -65,7 +65,10 @@ public:
 
 	void buttonHoldCheck();
 
+	bool begin();
 
+	void reset();
+	bool identify();
 
 protected:
 

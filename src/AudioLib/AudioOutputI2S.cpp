@@ -1,16 +1,17 @@
 #include "AudioOutputI2S.h"
 
 AudioOutputI2S::AudioOutputI2S(i2s_config_t config, i2s_pin_config_t pins, int _port) :
-		AudioOutput::AudioOutput(), config(config), pins(pins), port(port){
+		AudioOutput::AudioOutput(), config(config), pins(pins), port(_port){
 	i2sBegin();
 }
 
 AudioOutputI2S::~AudioOutputI2S(){
+	i2s_driver_uninstall(static_cast<i2s_port_t>(port));
 }
 
 void AudioOutputI2S::output(){
 	size_t bytesWritten;
-	i2s_write(I2S_NUM_0, inBuffer, 800*sizeof(int16_t), &bytesWritten, portMAX_DELAY);
+	i2s_write_expand(I2S_NUM_0, inBuffer, 800*sizeof(int16_t), 16, 32, &bytesWritten, portMAX_DELAY);
 }
 
 void AudioOutputI2S::i2sBegin(){

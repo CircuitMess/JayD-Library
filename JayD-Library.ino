@@ -1,89 +1,76 @@
 #include <Arduino.h>
 #include <CircuitOS.h>
 #include "src/JayD.h"
+#include "src/InputLib/InputJayD.h"
+#include "src/Screens/Selector.h"
+#include "src/Screens/Playback.h"
 #include <Loop/LoopManager.h>
-
-#include <SPI.h>
-#include <SerialFlash.h>
-#include <Devices/SerialFlash/SerialFlashFileAdapter.h>
+#include <Display/Display.h>
+#include <Support/Context.h>
 #include <SD.h>
+#include "src/snow.hpp"
+#include <Devices/LEDmatrix/LEDmatrix.h>
+#include <Util/Task.h>
 
-const i2s_config_t i2s_config = {
-	.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX), // Receive and transfer
-	.sample_rate = 16000,                         // 44.1KHz
-	.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT, // could only get it to work with 32bits
-	.channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT, // although the SEL config should be left, it seems to transmit on right
-	.communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
-	.intr_alloc_flags = 0,     // Interrupt level 1
-	.dma_buf_count = 16,                           // number of buffers
-	.dma_buf_len = 60,                              // 60 samples per buffer (8 minimum)
-	.use_apll = false
-};
+Display display(160, 128, -1, -3);
+LEDmatrixImpl LEDMatrix;
 
-// The pin config as per the setup
-const i2s_pin_config_t spencer_pin_config = {
-	.bck_io_num = 16,   // BCKL
-	.ws_io_num = 27,    // LRCL
-	.data_out_num = 4,	//speaker pin
-	.data_in_num = 32	//mic pin
-};
+void MatrixTask(Task* task){
+	InputJayD* input = new InputJayD();
+	input->begin();
 
-// The pin config as per the setup
-const i2s_pin_config_t ringo_pin_config = {
-	.bck_io_num = 13,   // BCKL
-	.ws_io_num = 15,    // LRCL
-	.data_out_num = 22,	//speaker pin
-	.data_in_num = 33	//mic pin
-};
+	uint32_t lastMicros = micros();
 
-AudioOutput* output;
+	while(task->running){
+		uint32_t m = micros();
+		uint32_t dt = m - lastMicros;
+
+		LEDMatrix.loop(dt);
+		if(InputJayD::getInstance() != nullptr){
+			InputJayD::getInstance()->loop(dt);
+		}
+
+		lastMicros = m;
+	}
+}
+
 void setup(){
 	Serial.begin(115200);
 
-	//RINGO TESTING
-	//-------------------------------------------
-	pinMode(32, OUTPUT);
-	digitalWrite(32, LOW);
-	pinMode(26, OUTPUT);
-	digitalWrite(26, 0);
-	pinMode(36, INPUT_PULLUP);
-	pinMode(34, INPUT_PULLUP);
-	pinMode(33, INPUT_PULLUP);
-	pinMode(39, INPUT_PULLUP);
+	SPI.begin(18, 19, 23);
+	SPI.setFrequency(60000000);
+
 	pinMode(25, OUTPUT);
-	digitalWrite(25, 0);
-	while (!SD.begin(5, SPI, 8000000)){
-		Serial.println("SD ERROR");
+	digitalWrite(1, 25);
+	display.begin();
+
+	if(!SD.begin(22)){
+		Serial.println("SD card fail");
 	}
 
+	LEDMatrix.begin(26, 27);
+	File f = SD.open("/snow.gif");
+	if(!f){
+		Serial.println("No snow!");
+	}else{
+		LEDMatrix.startAnimation(new Animation(&f), true);
+	}
+	Task* lmTask = new Task("LedMatrix", MatrixTask, 2048, nullptr);
+	//lmTask->start(1, 0);
+	LoopManager::addListener(&LEDMatrix);
+	InputJayD* input = new InputJayD();
+	input->begin();
+	LoopManager::addListener(input);
 
+	Context* selector = new Selector(display);
 
-	//SPENCER TESTING
-	//-------------------------------------------
-	// SPIClass spi(3);
-	// spi.begin(18, 19, 23, 5);
-	// if(!SerialFlash.begin(spi, 5)){
-	// 	Serial.println("Flash fail");
-	// 	return;
-	// }
-	
+	selector->unpack();
+	selector->start();
 
-	output = new AudioOutputI2S(i2s_config, ringo_pin_config, 0);
-	AudioMixer* mixer = new AudioMixer();
-	mixer->addSource(new AudioGeneratorWAV(new File(SD.open("/song1.wav", "r"))));
-	mixer->addSource(new AudioGeneratorWAV(new File(SD.open("/song2.wav", "r"))));
-	// mixer->setMixRatio(255);
-	output->setSource(mixer);
-
-
-	// mixer->addSource(new AudioGeneratorWAV(new fs::File(fs::FileImplPtr(new SerialFlashFileAdapter("song2.wav")))));
-	// mixer->addSource(new AudioGeneratorWAV(new fs::File(fs::FileImplPtr(new SerialFlashFileAdapter("song1.wav")))));
-
-
-	// output->setSource(new AudioGeneratorWAV(new fs::File(fs::FileImplPtr(new SerialFlashFileAdapter("joke1.wav")))));
-
-	output->start();
-	output->setGain(0.1);
+	Serial.printf("ID is %s\n", input->identify() ? "OK" : "not OK");
+	Serial.println("resetting");
+	delay(100);
+	Serial.printf("ID is %s\n", input->identify() ? "OK" : "not OK");
 }
 
 void loop(){
