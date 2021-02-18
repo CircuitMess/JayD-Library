@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <CircuitOS.h>
-#include "src/JayD.h"
+#include "src/JayD.hpp"
 #include <Loop/LoopManager.h>
 
 #include <SPI.h>

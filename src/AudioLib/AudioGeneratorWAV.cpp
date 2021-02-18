@@ -1,4 +1,5 @@
 #include "AudioGeneratorWAV.h"
+#include "DefaultAudioSettings.hpp"
 
 //-------------------------------------------
 // Helper structs and funcs
@@ -86,7 +87,7 @@ int AudioGeneratorWAV::generate(int16_t *outBuffer){
 		readHeader();
 	}
 
-	return file->read((uint8_t*)outBuffer, 800*sizeof(int16_t));
+	return file->read((uint8_t*)outBuffer, DEFAULT_BUFFSIZE * DEFAULT_BYTESPERSAMPLE);
 }
 
 int AudioGeneratorWAV::getBitsPerSample(){

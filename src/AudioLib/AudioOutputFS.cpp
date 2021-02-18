@@ -1,5 +1,6 @@
 #include "AudioOutputFS.h"
 #include <string>
+#include "DefaultAudioSettings.hpp"
 struct wavHeader{
 	char RIFF[4];
 	uint32_t chunkSize;
@@ -34,22 +35,7 @@ void AudioOutputFS::output(size_t numBytes){
 
 void AudioOutputFS::start(){
 	dataLength = 0;
-	char _path[100];
-	strncpy(_path, path, 100);
-	char* dotlocation = _path + std::string(_path).find_last_of('/');
-	char* helper;
-	do{
-		helper = dotlocation;
-		dotlocation = strstr(dotlocation + 1, ".");
-	} while (dotlocation != nullptr);
-	if(helper == _path + std::string(_path).find_last_of('/')){
-		dotlocation = _path + strlen(path);
-	}else{
-		dotlocation = helper;
-	}
-	sprintf(dotlocation, "%.3d%s", recordingNum, ".wav");
-
-	file = new fs::File(filesystem->open(_path, "w"));
+	file = new fs::File(filesystem->open(path, "w"));
 	if(!(*file)){
 		Serial.println("Couldn't open file for output");
 		return;
@@ -86,11 +72,11 @@ void AudioOutputFS::writeHeader(){
 	memcpy(header.fmt, "fmt ", 4);
 	header.fmtSize = 16;
 	header.audioFormat = 1; //PCM
-	header.numChannels = 2; //2 channels
-	header.sampleRate = 16000;
-	header.byteRate = 16000*2*2;
-	header.blockAlign = 2*2;
-	header.bitsPerSample = 16;
+	header.numChannels = DEFAULT_NUMCHANNELS; //2 channels
+	header.sampleRate = DEFAULT_SAMPLERATE;
+	header.byteRate = DEFAULT_SAMPLERATE * DEFAULT_NUMCHANNELS * DEFAULT_BYTESPERSAMPLE;
+	header.blockAlign = DEFAULT_NUMCHANNELS * DEFAULT_BYTESPERSAMPLE;
+	header.bitsPerSample = DEFAULT_BYTESPERSAMPLE * 8;
 	memcpy(header.data, "data", 4);
 	header.dataSize = 0; //corrected when stop() is called
 

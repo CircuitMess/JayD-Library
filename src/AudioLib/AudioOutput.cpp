@@ -1,6 +1,7 @@
 #include "AudioOutput.h"
 #include "AudioGenerator.h"
 #include <Loop/LoopManager.h>
+#include "DefaultAudioSettings.hpp"
 
 AudioOutput::AudioOutput() : 
 		inBuffer(nullptr),
@@ -8,7 +9,7 @@ AudioOutput::AudioOutput() :
 		generator(nullptr),
 		running(false){
 
-	inBuffer = (int16_t*)calloc(bufferSize, sizeof(int16_t));
+	inBuffer = (int16_t*)calloc(DEFAULT_BUFFSIZE, DEFAULT_BYTESPERSAMPLE);
 }
 
 AudioOutput::~AudioOutput(){
@@ -34,7 +35,7 @@ void AudioOutput::loop(uint _time){
 			start();
 			running = true;
 		}
-		for(uint32_t i = 0; i < receivedBytes/sizeof(int16_t); i++){
+		for(uint32_t i = 0; i < receivedBytes/DEFAULT_BYTESPERSAMPLE; i++){
 			*(inBuffer + i) = static_cast<int16_t>((*(inBuffer + i)) * gain);
 		}
 	}

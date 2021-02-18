@@ -5,7 +5,7 @@ class AudioEffect
 {
 public:
 	virtual ~AudioEffect() = default;
-	virtual void applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numSamples) = 0;
+	virtual void applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numBytes) = 0;
 };
 
 #endif
