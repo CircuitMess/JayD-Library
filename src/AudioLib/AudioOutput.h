@@ -27,8 +27,6 @@ private:
 	float gain; //0 - 1.0
 	AudioGenerator* generator;
 	bool running;
-	const size_t bufferSize = 800; //800 samples, 16-bit stereo
-
 };
 
 

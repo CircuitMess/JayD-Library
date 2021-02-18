@@ -19,9 +19,6 @@ private:
 
 	r8b::CFixedBuffer< double > InBufs[2]; //max 2 channels in audio files
 	r8b::CPtrKeeper< r8b::CDSPResampler24* > Resamps[2];
-
-	const int outSampleRate = 44100;
-
 };
 
 

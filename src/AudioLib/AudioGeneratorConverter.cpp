@@ -1,5 +1,5 @@
 #include "AudioGeneratorConverter.h"
-
+#include "DefaultAudioSettings.hpp"
 AudioGeneratorConverter::AudioGeneratorConverter(AudioSource* source) : source(source)
 {
 	// size_t buffSize = 800;
@@ -8,11 +8,11 @@ AudioGeneratorConverter::AudioGeneratorConverter(AudioSource* source) : source(s
 	// 	buffSize*=2;
 	// }
 
-	const int InBufCapacity = 800; //taking in 800 samples at a time
+	const int InBufCapacity = DEFAULT_BUFFSIZE; //taking in 800 samples at a time
 	for( uint8_t i = 0; i < source->getChannels(); i++ )
 	{
 		InBufs[ i ].alloc( InBufCapacity );
-		Resamps[ i ] = new r8b::CDSPResampler24( source->getSampleRate(), outSampleRate, InBufCapacity );
+		Resamps[ i ] = new r8b::CDSPResampler24( source->getSampleRate(), DEFAULT_SAMPLERATE, InBufCapacity );
 	}
 }
 
@@ -46,7 +46,7 @@ int AudioGeneratorConverter::generate(int16_t* outBuffer)
 	
 	//resample to 44100Hz
 	int WriteCount;
-	if(source->getSampleRate() != outSampleRate){
+	if(source->getSampleRate() != DEFAULT_SAMPLERATE){
 		double* opp[ source->getChannels() ];
 
 		for(int i = 0; i < source->getChannels(); i++ )

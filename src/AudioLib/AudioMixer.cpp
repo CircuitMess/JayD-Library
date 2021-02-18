@@ -1,4 +1,5 @@
 #include "AudioMixer.h"
+#include "DefaultAudioSettings.hpp"
 
 //clipping wave to avoid overflows
 int16_t clip(int32_t input){ 
@@ -28,7 +29,7 @@ AudioMixer::~AudioMixer()
 }
 
 int AudioMixer::generate(int16_t *outBuffer){
-	memset(outBuffer, 0, 800*sizeof(int16_t));
+	memset(outBuffer, 0, DEFAULT_BUFFSIZE * DEFAULT_BYTESPERSAMPLE);
 	int receivedSamples[sourceList.size()] = {0};
 
 	for(uint8_t i = 0; i < sourceList.size(); i++){
@@ -39,10 +40,10 @@ int AudioMixer::generate(int16_t *outBuffer){
 		}
 	}
 
-	for(uint16_t i = 0; i < 800; i++){
+	for(uint16_t i = 0; i < DEFAULT_BUFFSIZE; i++){
 		int32_t wave = 0;
 		for(uint8_t j = 0; j < sourceList.size(); j++){
-			if(bufferList[j] != nullptr && (receivedSamples[j] / sizeof(int16_t)) > i){
+			if(bufferList[j] != nullptr && (receivedSamples[j] / DEFAULT_BYTESPERSAMPLE) > i){
 				if(sourceList.size() == 2){
 					wave += bufferList[j][i] * (float)((j == 1 ? (float)(mixRatio) : (float)(255.0 - mixRatio))/255.0); //use the mixer if only 2 tracks found
 				}else{
@@ -66,7 +67,7 @@ int AudioMixer::available(){
 
 void AudioMixer::addSource(AudioSource* generator){
 	sourceList.push_back(generator);
-	bufferList.push_back((int16_t*)calloc(800, sizeof(int16_t)));
+	bufferList.push_back((int16_t*)calloc(DEFAULT_BUFFSIZE, DEFAULT_BYTESPERSAMPLE));
 }
 
 void AudioMixer::setMixRatio(uint8_t ratio){

@@ -1,8 +1,8 @@
 #include "EffectProcessor.h"
-
+#include "DefaultAudioSettings.hpp"
 EffectProcessor::EffectProcessor(AudioGenerator* generator) : effectBuffer(nullptr), inputGenerator(generator)
 {
-	effectBuffer = (int16_t*)calloc(800, sizeof(int16_t));
+	effectBuffer = (int16_t*)calloc(DEFAULT_BUFFSIZE, DEFAULT_BYTESPERSAMPLE);
 }
 
 EffectProcessor::~EffectProcessor()
@@ -21,19 +21,31 @@ EffectProcessor::~EffectProcessor()
 }
 
 int EffectProcessor::generate(int16_t* outBuffer){
-	int receivedSamples = inputGenerator->generate(effectBuffer);
+	int receivedBytes = inputGenerator->generate(effectBuffer);
 	if(effectList.empty()){
-		memcpy(outBuffer, effectBuffer, receivedSamples*sizeof(int16_t));
-		return receivedSamples;
+		memcpy(outBuffer, effectBuffer, receivedBytes);
+		return receivedBytes;
 	}
 	for(uint8_t i = 0; i < effectList.size(); i++){
 		AudioEffect* effect = effectList[i];
 		if(effect != nullptr){
-			effect->applyEffect((i%2 == 0) ? effectBuffer, outBuffer : outBuffer, effectBuffer, receivedSamples);
+			effect->applyEffect((i%2 == 0) ? effectBuffer, outBuffer : outBuffer, effectBuffer, receivedBytes);
 		}
 	}
 	if(effectList.size() % 2 == 0){
-		memcpy(outBuffer, effectBuffer, receivedSamples*sizeof(int16_t));
+		memcpy(outBuffer, effectBuffer, receivedBytes);
 	}
-	return receivedSamples;
+	return receivedBytes;
+}
+
+void EffectProcessor::addEffect(AudioEffect* effect){
+	effectList.push_back(effect);
+}
+
+void EffectProcessor::removeEffect(int index){
+	effectList.erase(effectList.begin() + index);
+}
+
+AudioEffect* EffectProcessor::getEffect(int index){
+	return effectList[index];
 }
