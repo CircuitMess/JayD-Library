@@ -29,7 +29,11 @@ int EffectProcessor::generate(int16_t* outBuffer){
 	for(uint8_t i = 0; i < effectList.size(); i++){
 		AudioEffect* effect = effectList[i];
 		if(effect != nullptr){
-			effect->applyEffect((i%2 == 0) ? effectBuffer, outBuffer : outBuffer, effectBuffer, receivedBytes);
+			if(i%2 == 0){
+				effect->applyEffect(effectBuffer, outBuffer, receivedBytes);
+			}else{
+				effect->applyEffect(outBuffer, effectBuffer, receivedBytes);
+			}
 		}
 	}
 	if(effectList.size() % 2 == 0){
