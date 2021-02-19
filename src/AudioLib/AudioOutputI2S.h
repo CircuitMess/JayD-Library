@@ -8,11 +8,11 @@ class AudioOutputI2S : public AudioOutput
 public:
 	AudioOutputI2S(i2s_config_t _config, i2s_pin_config_t _pins, int port);
 	~AudioOutputI2S();
+	void start() override;
+	void stop() override;
 
 protected:
 	void output(size_t numBytes) override;
-	void start() override;
-	void stop() override;
 
 private:
 	i2s_config_t config;
