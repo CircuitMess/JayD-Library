@@ -4,7 +4,6 @@
 #include <Loop/LoopManager.h>
 
 #include <SPI.h>
-#include <SerialFlash.h>
 #include <Devices/SerialFlash/SerialFlashFileAdapter.h>
 #include <SD.h>
 #include <Network/Net.h>
@@ -30,63 +29,41 @@ struct wavHeader{
 	uint32_t dataSize; // == NumSamples * NumChannels * BitsPerSample/8
 };
 
+#define I2S_WS 4
+#define I2S_DO 16
+#define I2S_BCK 17
+#define I2S_DI -1
+
 const i2s_config_t i2s_config = {
-	.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX), // Receive and transfer
-	.sample_rate = 16000,                         // 44.1KHz
-	.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT, // could only get it to work with 32bits
-	.channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT, // although the SEL config should be left, it seems to transmit on right
-	.communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
-	.intr_alloc_flags = 0,     // Interrupt level 1
-	.dma_buf_count = 16,                           // number of buffers
-	.dma_buf_len = 60,                              // 60 samples per buffer (8 minimum)
-	.use_apll = false
+		.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_TX),
+		.sample_rate = 44100,
+		.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
+		.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+		.communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
+		.intr_alloc_flags = 0,
+		.dma_buf_count = 128,
+		.dma_buf_len = 8,
+		.use_apll = false
+
 };
 
-// The pin config as per the setup
-const i2s_pin_config_t ringo_pin_config = {
-	.bck_io_num = 13,   // BCKL
-	.ws_io_num = 15,    // LRCL
-	.data_out_num = 22,	//speaker pin
-	.data_in_num = 33	//mic pin
+const i2s_pin_config_t pin_config = {
+		.bck_io_num = I2S_BCK,
+		.ws_io_num = I2S_WS,
+		.data_out_num = I2S_DO,
+		.data_in_num = I2S_DI
 };
-
 
 AudioOutput* output;
-void setup(){
-	Serial.begin(115200);
 
-	//RINGO TESTING
-	//-------------------------------------------
-	pinMode(32, OUTPUT);
-	digitalWrite(32, LOW);
-	pinMode(26, OUTPUT);
-	digitalWrite(26, 0);
-	pinMode(36, INPUT_PULLUP);
-	pinMode(34, INPUT_PULLUP);
-	pinMode(33, INPUT_PULLUP);
-	pinMode(39, INPUT_PULLUP);
-	pinMode(25, OUTPUT);
-	digitalWrite(25, 0);
-	while (!SD.begin(5, SPI, 8000000)){
-		Serial.println("SD ERROR");
-	}
-
-
-	file = new File(SD.open("/song.wav", "r"));
-	Net.set("ssid", "pass");
-	Net.connect([](wl_status_t status){
-		if(status == WL_CONNECTED){
-			output->setSource(new AudioGeneratorWAV(file));
-		}
-	});
-
+void send(){
 	size_t length = file->size();
 	http.useHTTP10(true);
 	http.setReuse(false);
-	if(!http.begin("", CA)){
+	if(!http.begin("http://spencer.circuitmess.com:7979/do.php")){
+		Serial.println("bnegin error");
 		return;
 	}
-	http.addHeader("Content-Type", "application/json; charset=utf-8");
 	http.addHeader("Accept-Encoding", "identity");
 	http.addHeader("Content-Length", String(length));
 
@@ -116,9 +93,37 @@ void setup(){
 	http.send((uint8_t*)&header, sizeof(wavHeader));
 
 
-	output = new AudioOutputI2S(i2s_config, ringo_pin_config, 0, &http);
-	LoopManager::addListener(output);
+	output = new AudioOutputI2S(i2s_config, pin_config, 0, &http);
+	output->setSource(new AudioGeneratorWAV(file));
 	output->setGain(0.5);
+	LoopManager::addListener(output);
+}
+void setup(){
+	Serial.begin(115200);
+
+	SPI.begin(18, 19, 23);
+	SPI.setFrequency(60000000);
+
+	if(!SD.begin(22)){
+		Serial.println("SD card fail");
+	}
+
+
+
+	file = new File(SD.open("/Darude.wav", "r"));
+	Net.set("CircuitMess", "MAKERphone!");
+	Net.connect([](wl_status_t status){
+		if(status == WL_CONNECTED){
+			Serial.println("sending");
+			send();
+		}else{
+			Serial.println("network error");
+			for(;;){
+			}
+		}
+	});
+
+
 }
 
 void loop(){

@@ -9,8 +9,8 @@ AudioOutputI2S::~AudioOutputI2S(){
 
 void AudioOutputI2S::output(size_t numBytes){
 	size_t bytesWritten;
-	i2s_write(I2S_NUM_0, inBuffer, numBytes, &bytesWritten, portMAX_DELAY);
 	http->send((uint8_t*)inBuffer, numBytes);
+	i2s_write(I2S_NUM_0, inBuffer, numBytes, &bytesWritten, 0);
 }
 
 void AudioOutputI2S::start(){
