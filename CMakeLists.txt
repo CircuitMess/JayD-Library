@@ -38,8 +38,8 @@ include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.0/tools/sdk/incl
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.0/tools/sdk/include/driver)
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.0/tools/sdk/include/driver/driver)
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.0/tools/sdk/include/spi_flash)
+include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.0/libraries/CircuitOS/src)
 
-include_directories(${ArduinoLibs}/CircuitOS/src)
 include_directories(${ArduinoLibs}/TFT_eSPI)
 include_directories(${ArduinoLibs}/TFT_eSPI/Extensions)
 include_directories(${ArduinoLibs}/ESP8266Audio/src)
@@ -61,7 +61,7 @@ AUX_SOURCE_DIRECTORY(src/SetupServer SOURCES)
 AUX_SOURCE_DIRECTORY(src/Speech SOURCES)
 AUX_SOURCE_DIRECTORY(src/State SOURCES)
 AUX_SOURCE_DIRECTORY(src/Util SOURCES)
-AUX_SOURCE_DIRECTORY(src/InputLib SOURCES)
+AUX_SOURCE_DIRECTORY(src/Input SOURCES)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
 
