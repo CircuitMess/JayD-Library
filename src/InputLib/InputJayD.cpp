@@ -17,6 +17,42 @@ InputJayD::InputJayD() : btnPressCallbacks(btnNum, nullptr), btnReleaseCallbacks
 
 }
 
+void InputJayD::reset(){
+	pinMode(resetPin, OUTPUT);
+	digitalWrite(resetPin, 0);
+	if(micros() >= 10){
+		digitalWrite(resetPin, 1);
+	}
+}
+
+bool InputJayD::identify(){
+	Wire.beginTransmission(0x43);
+	Wire.write(0x0);
+	Wire.endTransmission();
+	if(Wire.read() == 0x43){
+		return true;
+	}else{
+		return false;
+	}
+}
+
+bool InputJayD::begin(){
+	digitalWrite(resetPin, 1);
+	reset();
+	if(millis() >= 5){
+		Wire.beginTransmission(0x43);
+		Wire.endTransmission();
+		if(Wire.available()){
+			if(Wire.read() == 0){
+				identify();
+			}
+			return true;
+		}else{
+			return false;
+		}
+	}
+}
+
 void InputJayD::setBtnPressCallback(uint8_t id, void (*callback)()){
 	btnPressCallbacks[id] = callback;
 }
@@ -41,6 +77,7 @@ void InputJayD::setBtnHeldCallback(uint8_t id, uint32_t holdTime, void (*callbac
 	btnHoldCallbacks[id] = callback;
 	btnHoldValue[id] = holdTime;
 }
+
 void InputJayD::removeBtnHeldCallback(uint8_t id){
 	btnHoldCallbacks[id] = nullptr;
 }

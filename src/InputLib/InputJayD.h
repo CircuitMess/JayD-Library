@@ -13,6 +13,7 @@
 #define btnNum 9
 #define encNum 7
 #define potNum 3
+#define resetPin 13
 
 
 enum DeviceType {
@@ -68,7 +69,6 @@ public:
 	void buttonHoldCheck();
 
 
-
 protected:
 
 	std::vector<void (*)()> btnPressCallbacks;
@@ -78,13 +78,17 @@ protected:
 	std::vector<void (*)(int8_t)> encMovedCallbacks;
 	std::vector<void (*)(uint8_t)> potMovedCallbacks;
 
-	std::vector<uint32_t> btnHoldValue;
-	std::vector<uint32_t> btnHoldStart;
+	std::vector <uint32_t> btnHoldValue;
+	std::vector <uint32_t> btnHoldStart;
 	std::vector<bool> wasPressed;
 
 	static InputJayD *instance;
 
+	void reset();
 
+	bool begin();
+
+	bool identify();
 };
 
 
