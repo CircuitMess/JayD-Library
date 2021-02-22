@@ -5,8 +5,10 @@
 #include <Loop/LoopListener.h>
 #include <Util/Vector.h>
 #include <sys/param.h>
+#include <vector>
 
 #define DEBOUNCE_COUNT 1
+#define identifyByte 0x0
 #define deviceAddr 0x43
 #define getEvents 0x12
 #define sendEvents 0x13
@@ -56,17 +58,11 @@ public:
 
 	void loop(uint _time) override;
 
-	uint8_t getNumEvents();
+	void reset();
 
-	void fetchEvents(int numEvents);
+	bool begin();
 
-	void handleButtonEvent(uint8_t id, uint8_t value);
-
-	void handleEncoderEvent(uint8_t id, int8_t value);
-
-	void handlePotentiometerEvent(uint8_t id, uint8_t value);
-
-	void buttonHoldCheck();
+	bool identify();
 
 
 protected:
@@ -84,11 +80,18 @@ protected:
 
 	static InputJayD *instance;
 
-	void reset();
+	uint8_t getNumEvents();
 
-	bool begin();
+	void fetchEvents(int numEvents);
 
-	bool identify();
+	void handleButtonEvent(uint8_t id, uint8_t value);
+
+	void handleEncoderEvent(uint8_t id, int8_t value);
+
+	void handlePotentiometerEvent(uint8_t id, uint8_t value);
+
+	void buttonHoldCheck();
+
 };
 
 

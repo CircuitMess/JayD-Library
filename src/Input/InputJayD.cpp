@@ -18,39 +18,32 @@ InputJayD::InputJayD() : btnPressCallbacks(btnNum, nullptr), btnReleaseCallbacks
 }
 
 void InputJayD::reset(){
-	pinMode(resetPin, OUTPUT);
-	digitalWrite(resetPin, 0);
-	if(micros() >= 10){
-		digitalWrite(resetPin, 1);
-	}
+	digitalWrite(resetPin, LOW);
+	delayMicroseconds(10);
+	digitalWrite(resetPin, HIGH);
+
 }
 
 bool InputJayD::identify(){
-	Wire.beginTransmission(0x43);
-	Wire.write(0x0);
+	Wire.beginTransmission(deviceAddr);
+	Wire.write(identifyByte);
 	Wire.endTransmission();
-	if(Wire.read() == 0x43){
-		return true;
-	}else{
-		return false;
-	}
+	return (Wire.read() == deviceAddr);
 }
 
 bool InputJayD::begin(){
-	digitalWrite(resetPin, 1);
+	pinMode(resetPin, OUTPUT);
+	digitalWrite(resetPin, HIGH);
 	reset();
-	if(millis() >= 5){
-		Wire.beginTransmission(0x43);
-		Wire.endTransmission();
-		if(Wire.available()){
-			if(Wire.read() == 0){
-				identify();
-			}
-			return true;
-		}else{
-			return false;
-		}
+	delay(5);
+	Wire.beginTransmission(deviceAddr);
+
+	if(Wire.endTransmission() != 0){
+		return false;
 	}
+
+	return identify();
+
 }
 
 void InputJayD::setBtnPressCallback(uint8_t id, void (*callback)()){
