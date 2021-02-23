@@ -5,11 +5,11 @@
 
 InputJayD *InputJayD::instance;
 
-InputJayD::InputJayD() : btnPressCallbacks(btnNum, nullptr), btnReleaseCallbacks(btnNum, nullptr),
-						 btnHoldCallbacks(btnNum, nullptr),
-						 encMovedCallbacks(encNum, nullptr), potMovedCallbacks(potNum, nullptr),
-						 btnHoldValue(btnNum, 0), btnHoldStart(btnNum, 0),
-						 wasPressed(btnNum, false){
+InputJayD::InputJayD() : btnPressCallbacks(NUM_BTN, nullptr), btnReleaseCallbacks(NUM_BTN, nullptr),
+						 btnHoldCallbacks(NUM_BTN, nullptr),
+						 encMovedCallbacks(NUM_ENC, nullptr), potMovedCallbacks(NUM_POT, nullptr),
+						 btnHoldValue(NUM_BTN, 0), btnHoldStart(NUM_BTN, 0),
+						 wasPressed(NUM_BTN, false){
 
 	Wire.begin(26, 27);
 
@@ -18,25 +18,25 @@ InputJayD::InputJayD() : btnPressCallbacks(btnNum, nullptr), btnReleaseCallbacks
 }
 
 void InputJayD::reset(){
-	digitalWrite(resetPin, LOW);
+	digitalWrite(JDNV_PIN_RESET, LOW);
 	delayMicroseconds(10);
-	digitalWrite(resetPin, HIGH);
+	digitalWrite(JDNV_PIN_RESET, HIGH);
 
 }
 
 bool InputJayD::identify(){
-	Wire.beginTransmission(deviceAddr);
-	Wire.write(identifyByte);
+	Wire.beginTransmission(JDNV_ADDR);
+	Wire.write(BYTE_IDENTIFY);
 	Wire.endTransmission();
-	return (Wire.read() == deviceAddr);
+	return (Wire.read() == JDNV_ADDR);
 }
 
 bool InputJayD::begin(){
-	pinMode(resetPin, OUTPUT);
-	digitalWrite(resetPin, HIGH);
+	pinMode(JDNV_PIN_RESET, OUTPUT);
+	digitalWrite(JDNV_PIN_RESET, HIGH);
 	reset();
 	delay(5);
-	Wire.beginTransmission(deviceAddr);
+	Wire.beginTransmission(JDNV_ADDR);
 
 	if(Wire.endTransmission() != 0){
 		return false;
@@ -93,10 +93,10 @@ void InputJayD::removePotMovedCallback(uint8_t id){
 }
 
 uint8_t InputJayD::getNumEvents(){
-	Wire.beginTransmission(deviceAddr);
-	Wire.write(getEvents);
+	Wire.beginTransmission(JDNV_ADDR);
+	Wire.write(BYTE_NUMEVENTS);
 	Wire.endTransmission();
-	Wire.requestFrom(deviceAddr, 2);
+	Wire.requestFrom(JDNV_ADDR, 2);
 	if(Wire.available()){
 		Wire.read();//addr
 	}
@@ -108,15 +108,15 @@ uint8_t InputJayD::getNumEvents(){
 
 void InputJayD::fetchEvents(int numEvents){
 	if(numEvents == 0) return;
-	Wire.beginTransmission(deviceAddr);
-	Wire.write(sendEvents);
+	Wire.beginTransmission(JDNV_ADDR);
+	Wire.write(BYTE_GETEVENTS);
 	Wire.write(numEvents);
 	Wire.endTransmission();
-	Wire.requestFrom(deviceAddr, 2 * numEvents + 1);
+	Wire.requestFrom(JDNV_ADDR, 2 * numEvents + 1);
 	if(Wire.available()){
 		Wire.read();
 	}
-	std::vector<Event> events;
+	std::vector<InputEvent> events;
 	uint8_t deviceId;
 	int8_t valueData;
 	for(int i = numEvents; i > 0; i--){
@@ -132,7 +132,7 @@ void InputJayD::fetchEvents(int numEvents){
 
 		events.push_back({(DeviceType) device, id, valueData});
 	}
-	for(Event event:events){
+	for(InputEvent event:events){
 		if(event.deviceType == BTN){
 			handleButtonEvent(event.deviceID, event.value);
 		}else if(event.deviceType == ENC){

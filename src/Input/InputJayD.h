@@ -7,22 +7,21 @@
 #include <sys/param.h>
 #include <vector>
 
-#define DEBOUNCE_COUNT 1
-#define identifyByte 0x0
-#define deviceAddr 0x43
-#define getEvents 0x12
-#define sendEvents 0x13
-#define btnNum 9
-#define encNum 7
-#define potNum 3
-#define resetPin 13
+#define BYTE_IDENTIFY 0x0
+#define JDNV_ADDR 0x43
+#define BYTE_NUMEVENTS 0x12
+#define BYTE_GETEVENTS 0x13
+#define NUM_BTN 9
+#define NUM_ENC 7
+#define NUM_POT 3
+#define JDNV_PIN_RESET 13
 
 
 enum DeviceType {
 	BTN, ENC, POT
 };
 
-struct Event {
+struct InputEvent {
 	DeviceType deviceType;
 	uint8_t deviceID;
 	int8_t value;
@@ -65,12 +64,11 @@ public:
 	bool identify();
 
 
-protected:
+private:
 
 	std::vector<void (*)()> btnPressCallbacks;
 	std::vector<void (*)()> btnReleaseCallbacks;
 	std::vector<void (*)()> btnHoldCallbacks;
-	//std::vector<void (*)(uint)> btnHoldRepeatCallbacks;
 	std::vector<void (*)(int8_t)> encMovedCallbacks;
 	std::vector<void (*)(uint8_t)> potMovedCallbacks;
 
