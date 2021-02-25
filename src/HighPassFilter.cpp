@@ -37,7 +37,7 @@ void HighPassFilter::windowResponse(){
 
 	for(int n = -(L-1)/2; n <= (L-1)/2; ++n){
 
-		//windowCoeffs[n + (L-1)/2] = 0.42 + 0.5*cos((2*PI*n)/(L-1)) + 0.08*cos((4*PI*n)/(L-1));
+		//windowCoeffs[n + (L-1)/2] = 0.42 + 0.5*cos((2*PI*n)/(L-1)) + 0.08*cos((4*PI*n)/(L-1));	// Blackman
 
 		float alpha = 0.5;
 		windowCoeffs[n + (L-1)/2] = 0.5 + (1-alpha)*cos((2*PI*n)/(L-1));	// Hann
@@ -111,18 +111,15 @@ int16_t HighPassFilter::signalProcessing(int16_t sample){
 
 void HighPassFilter::setIntensity(uint8_t intensity){
 
-	//intensity = 1.0f / (float)intensity + 1;
+	intensity = intensity/8;
 
-	intensity = (float)intensity/1.08f + 20;
-
-	cutOffFrequency = ((float)intensity/255.0f)*(float)PI;
+	cutOffFrequency = ((float)intensity/236.0f)*(float)PI;
 
 	if(intensity < 1){
 		intensity = 1;
 	}
 
-	gain = 4.0f/pow(intensity,2) + 1.0f;
-	//gain = (1.0f/((float)intensity+1.0f)) * 1.0f + 1;
+	gain = (intensity/236.0f)*1.0f + 1.0f;
 
 	generateFilterCoeffs();
 
