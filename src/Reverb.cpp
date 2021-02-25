@@ -6,12 +6,6 @@
 
 Reverb::Reverb(){
 
-	combFilter1Output = static_cast<int32_t  *>(malloc(1024 * sizeof(int32_t)));
-	combFilter2Output = static_cast<int32_t  *>(malloc(1024 * sizeof(int32_t)));
-	combFilter3Output = static_cast<int32_t  *>(malloc(1024 * sizeof(int32_t)));
-	combFilter4Output = static_cast<int32_t  *>(malloc(1024 * sizeof(int32_t)));
-	allPassFilter1Output = static_cast<int32_t  *>(malloc(1024 * sizeof(int32_t)));
-	allPassFilter2Output = static_cast<int32_t  *>(malloc(1024 * sizeof(int32_t)));
 }
 
 
@@ -24,18 +18,11 @@ void Reverb::combFilter(int16_t* sample, int numberOfSamples){
 	int delayComb3Samples = (int) ((float)(delaySamples + 19.31f));
 	int delayComb4Samples = (int) ((float)(delaySamples - 7.97f));
 
-	if(sizeof (combFilter1Output) < numberOfSamples * sizeof (int32_t)){
-		combFilter1Output = static_cast<int32_t *>(realloc(combFilter1Output, numberOfSamples * sizeof(int32_t)));
-	}
-	if(sizeof (combFilter2Output) < numberOfSamples * sizeof (int32_t)){
-		combFilter2Output = static_cast<int32_t *>(realloc(combFilter2Output, numberOfSamples * sizeof(int32_t)));
-	}
-	if(sizeof (combFilter3Output) < numberOfSamples * sizeof (int32_t)){
-		combFilter3Output = static_cast<int32_t *>(realloc(combFilter3Output, numberOfSamples * sizeof(int32_t)));
-	}
-	if(sizeof (combFilter4Output) < numberOfSamples * sizeof (int32_t)){
-		combFilter4Output = static_cast<int32_t *>(realloc(combFilter4Output, numberOfSamples * sizeof(int32_t)));
-	}
+	combFilter1Output = static_cast<int32_t  *>(malloc(numberOfSamples * sizeof(int32_t)));
+	combFilter2Output = static_cast<int32_t  *>(malloc(numberOfSamples * sizeof(int32_t)));
+	combFilter3Output = static_cast<int32_t  *>(malloc(numberOfSamples * sizeof(int32_t)));
+	combFilter4Output = static_cast<int32_t  *>(malloc(numberOfSamples * sizeof(int32_t)));
+
 
 	for(int i=0; i < (numberOfSamples); i++){
 		combFilter1Output[i] = combFilter2Output[i] = combFilter3Output[i] = combFilter4Output[i] = sample[i];
@@ -53,7 +40,6 @@ void Reverb::combFilter(int16_t* sample, int numberOfSamples){
 	for(int i=0; i < (numberOfSamples - delayComb4Samples); i++){
 		combFilter4Output[i+delayComb4Samples] += (int32_t)((float)combFilter4Output[i] * (decayFactor-0.31f));
 	}
-	printf("comb_finished\n");
 }
 
 void Reverb::allPassFilter(int32_t* samples, int numberOfSamples, uint8_t index){
@@ -67,28 +53,22 @@ void Reverb::allPassFilter(int32_t* samples, int numberOfSamples, uint8_t index)
 	int16_t M = SAMPLE_RATE*delayAllPassSamples;
 	float allPassDecay = 0.131f;
 
-	if(sizeof (allPassFilter1Output) < numberOfSamples * sizeof (int32_t)){
-		allPassFilter1Output = static_cast<int32_t *>(realloc(allPassFilter1Output, numberOfSamples * sizeof(int32_t)));
-	}
-	if(sizeof (allPassFilter2Output) < numberOfSamples * sizeof (int32_t)){
-		allPassFilter2Output = static_cast<int32_t *>(realloc(allPassFilter2Output, numberOfSamples * sizeof(int32_t)));
-	}
-
-	printf("Index: %d\n", index);
+	allPassFilter1Output = static_cast<int32_t  *>(malloc(numberOfSamples * sizeof(int32_t)));
+	allPassFilter2Output = static_cast<int32_t  *>(malloc(numberOfSamples * sizeof(int32_t)));
 
 	if(index == 1){
 
-		for(int i = 0; i < (numberOfSamples - delayAllPassSamples); i++){
+		for(int i = 0; i < (numberOfSamples); i++){
 
 			allPassFilter1Output[i] = samples[i];
-			allPassFilter1Output[i+delayAllPassSamples] = -allPassDecay*allPassFilter1Output[i+delayAllPassSamples] + allPassFilter1Output[i] + allPassDecay*allPassFilter1Output[i];
+			//allPassFilter1Output[i+delayAllPassSamples] = -allPassDecay*allPassFilter1Output[i+delayAllPassSamples] + allPassFilter1Output[i] + allPassDecay*allPassFilter1Output[i];
 			//printf("AllPass1Out: %d\n", allPassFilter1Output[i+delayAllPassSamples]);
-			/*if(i - delayAllPassSamples >= 0){
+			if(i - delayAllPassSamples >= 0){
 				allPassFilter1Output[i] += (int32_t)(-allPassDecay * (float)allPassFilter1Output[i - delayAllPassSamples]);
 			}
 			if(i - delayAllPassSamples >= 1){
 				allPassFilter1Output[i] += (int32_t)(allPassDecay * (float)allPassFilter1Output[i + 20 - delayAllPassSamples]);
-			}*/
+			}
 		}
 
 		int32_t value = allPassFilter1Output[0];
@@ -110,16 +90,16 @@ void Reverb::allPassFilter(int32_t* samples, int numberOfSamples, uint8_t index)
 	}
 	else if(index == 2){
 
-		for(int i = 0; i < (numberOfSamples - delayAllPassSamples); i++){
+		for(int i = 0; i < (numberOfSamples ); i++){
 
 			allPassFilter2Output[i] = samples[i];
-			allPassFilter2Output[i+delayAllPassSamples] = -allPassDecay*allPassFilter2Output[i+delayAllPassSamples] + allPassFilter2Output[i] + allPassDecay*allPassFilter2Output[i + 20];
-			/*if(i - delayAllPassSamples >= 0){
+			//allPassFilter2Output[i+delayAllPassSamples] = -allPassDecay*allPassFilter2Output[i+delayAllPassSamples] + allPassFilter2Output[i] + allPassDecay*allPassFilter2Output[i + 20];
+			if(i - delayAllPassSamples >= 0){
 				allPassFilter2Output[i] += (int32_t)(-allPassDecay * (float)allPassFilter2Output[i - delayAllPassSamples]);
 			}
 			if(i - delayAllPassSamples >= 1){
 				allPassFilter2Output[i] += (int32_t)(allPassDecay * (float)allPassFilter2Output[i + 20 - delayAllPassSamples]);
-			}*/
+			}
 		}
 
 		int32_t value = allPassFilter2Output[0];
@@ -137,6 +117,7 @@ void Reverb::allPassFilter(int32_t* samples, int numberOfSamples, uint8_t index)
 			value = ((value + (currentValue - value))/max);
 
 			allPassFilter2Output[i] = value;
+			printf("allPassOut: %d\n", allPassFilter2Output[i]);
 		}
 
 	}else
@@ -152,20 +133,12 @@ void Reverb::signalProcessing(int16_t* sample, int numberOfSamples){
 	for(int i = 0; i < numberOfSamples; ++i){
 
 		combParallelOut[i] = combFilter1Output[i] + combFilter2Output[i] + combFilter3Output[i] + combFilter4Output[i];
-		printf("CombParallelOut: %d\n", combParallelOut[i]);
-		printf("Comb1Out: %d\n", combFilter1Output[i]);
-		printf("Comb2Out: %d\n", combFilter2Output[i]);
-		printf("Comb3Out: %d\n", combFilter3Output[i]);
-		printf("Comb4Out: %d\n", combFilter4Output[i]);
-
 	}
 
 	int32_t* mixAudio = static_cast<int32_t *>(malloc(numberOfSamples * sizeof(int32_t)));
-	uint8_t mixPercent = 50;
 
 	for(int i=0; i<numberOfSamples; i++){
 		mixAudio[i] = ((100 - mixPercent) * sample[i]) + (mixPercent * combParallelOut[i]);
-		printf("mixAudioOut: %d\n", mixAudio[i]);
 	}
 
 	free(combParallelOut);
@@ -180,7 +153,7 @@ void Reverb::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numBytes){
 
 	signalProcessing(inBuffer , numBytes/2);
 
-	outBuffer = reinterpret_cast<int16_t *>(allPassFilter2Output);
+	memcpy(outBuffer,allPassFilter2Output,numBytes/2);
 
 	for(int i = 0; i < numBytes/2; ++i){
 		printf("Out: %d\n", allPassFilter2Output[i]);
@@ -188,6 +161,8 @@ void Reverb::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numBytes){
 }
 
 void Reverb::setIntensity(uint8_t intensity){
+
+	mixPercent = (intensity/236.0f) * 100;
 
 }
 
