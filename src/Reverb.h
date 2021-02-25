@@ -37,6 +37,8 @@ private:
 
 	float delaySamples = 78.9f;
 	float decayFactor = 0.45f;
+
+	uint8_t mixPercent = 50;
 };
 
 
