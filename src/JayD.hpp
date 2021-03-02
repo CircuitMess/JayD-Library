@@ -2,7 +2,7 @@
 #define JAYD_H
 
 #include <Arduino.h>
-#include "AudioLib/DefaultAudioSettings.hpp"
+#include "AudioSetup.hpp"
 #include "AudioLib/Output.h"
 #include "AudioLib/EffectProcessor.h"
 #include "AudioLib/Mixer.h"
