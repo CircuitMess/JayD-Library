@@ -1,16 +1,16 @@
-#ifndef JAYD_AUDIOGENERATORMP3_H
-#define JAYD_AUDIOGENERATORMP3_H
+#ifndef JAYD_SOURCEMP3_H
+#define JAYD_SOURCEMP3_H
 
 #include <Arduino.h>
 #include <FS.h>
-#include "AudioSource.h"
+#include "Source.h"
 
-class AudioGeneratorMP3 : public AudioSource
+class SourceMP3 : public Source
 {
 public:
-	AudioGeneratorMP3();
-	AudioGeneratorMP3(fs::File *file);
-	~AudioGeneratorMP3();
+	SourceMP3();
+	SourceMP3(fs::File *file);
+	~SourceMP3();
 	int generate(int16_t* outBuffer) override;
 	int available() override;
 

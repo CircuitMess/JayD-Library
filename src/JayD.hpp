@@ -3,13 +3,13 @@
 
 #include <Arduino.h>
 #include "AudioLib/DefaultAudioSettings.hpp"
-#include "AudioLib/AudioOutput.h"
+#include "AudioLib/Output.h"
 #include "AudioLib/EffectProcessor.h"
-#include "AudioLib/AudioMixer.h"
-#include "AudioLib/AudioGeneratorConverter.h"
-#include "AudioLib/AudioGeneratorWAV.h"
-#include "AudioLib/AudioGeneratorMP3.h"
-#include "AudioLib/AudioOutputI2S.h"
-#include "AudioLib/AudioOutputFS.h"
+#include "AudioLib/Mixer.h"
+#include "AudioLib/Converter.h"
+#include "AudioLib/SourceWAV.h"
+#include "AudioLib/SourceMP3.h"
+#include "AudioLib/OutputI2S.h"
+#include "AudioLib/OutputFS.h"
 
 #endif

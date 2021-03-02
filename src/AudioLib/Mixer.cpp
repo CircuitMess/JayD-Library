@@ -1,5 +1,5 @@
-#include "AudioMixer.h"
-#include "DefaultAudioSettings.hpp"
+#include "Mixer.h"
+#include "../AudioSetup.hpp"
 
 //clipping wave to avoid overflows
 int16_t clip(int32_t input){ 
@@ -10,11 +10,11 @@ int16_t clip(int32_t input){
 }
 
 
-AudioMixer::AudioMixer() : mixRatio(122)
+Mixer::Mixer() : mixRatio(122)
 {
 }
 
-AudioMixer::~AudioMixer()
+Mixer::~Mixer()
 {
 	for(int16_t* buffer : bufferList){
 		if(buffer != nullptr){
@@ -28,22 +28,22 @@ AudioMixer::~AudioMixer()
 	}
 }
 
-int AudioMixer::generate(int16_t *outBuffer){
-	memset(outBuffer, 0, DEFAULT_BUFFSIZE * DEFAULT_BYTESPERSAMPLE);
+int Mixer::generate(int16_t *outBuffer){
+	memset(outBuffer, 0, BUFFSIZE * BYTESPERSAMPLE);
 	int receivedSamples[sourceList.size()] = {0};
 
 	for(uint8_t i = 0; i < sourceList.size(); i++){
-		AudioGenerator* generator = sourceList[i];
+		Generator* generator = sourceList[i];
 		int16_t* buffer = bufferList[i];
 		if(generator != nullptr && buffer != nullptr){
 			receivedSamples[i] = generator->generate(buffer);
 		}
 	}
 
-	for(uint16_t i = 0; i < DEFAULT_BUFFSIZE; i++){
+	for(uint16_t i = 0; i < BUFFSIZE; i++){
 		int32_t wave = 0;
 		for(uint8_t j = 0; j < sourceList.size(); j++){
-			if(bufferList[j] != nullptr && (receivedSamples[j] / DEFAULT_BYTESPERSAMPLE) > i){
+			if(bufferList[j] != nullptr && (receivedSamples[j] / BYTESPERSAMPLE) > i){
 				if(sourceList.size() == 2){
 					wave += bufferList[j][i] * (float)((j == 1 ? (float)(mixRatio) : (float)(255.0 - mixRatio))/255.0); //use the mixer if only 2 tracks found
 				}else{
@@ -57,7 +57,7 @@ int AudioMixer::generate(int16_t *outBuffer){
 	return longestBuffer;
 }
 
-int AudioMixer::available(){
+int Mixer::available(){
 	int available = 0;
 	for(uint8_t i = 0; i < sourceList.size(); i++){
 		available = max(available, sourceList[i]->available());
@@ -65,15 +65,15 @@ int AudioMixer::available(){
 	return available;
 }
 
-void AudioMixer::addSource(AudioSource* generator){
+void Mixer::addSource(Source* generator){
 	sourceList.push_back(generator);
-	bufferList.push_back((int16_t*)calloc(DEFAULT_BUFFSIZE, DEFAULT_BYTESPERSAMPLE));
+	bufferList.push_back((int16_t*)calloc(BUFFSIZE, BYTESPERSAMPLE));
 }
 
-void AudioMixer::setMixRatio(uint8_t ratio){
+void Mixer::setMixRatio(uint8_t ratio){
 	mixRatio = ratio;
 }
 
-uint8_t AudioMixer::getMixRatio(){
+uint8_t Mixer::getMixRatio(){
 	return uint8_t(mixRatio);
 }

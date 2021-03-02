@@ -1,24 +1,24 @@
-#ifndef JAYD_AUDIOMIXER_H
-#define JAYD_AUDIOMIXER_H
+#ifndef JAYD_MIXER_H
+#define JAYD_MIXER_H
 
 #include <Arduino.h>
-#include "AudioGenerator.h"
-#include "AudioSource.h"
+#include "Generator.h"
+#include "Source.h"
 
-class AudioMixer : public AudioGenerator
+class Mixer : public Generator
 {
 public:
-	AudioMixer();
-	~AudioMixer();
+	Mixer();
+	~Mixer();
 	int generate(int16_t* outBuffer) override;
 	int available() override;
 
-	void addSource(AudioSource* source);
+	void addSource(Source* source);
 	uint8_t getMixRatio();
 	void setMixRatio(uint8_t ratio);
 	
 private:
-	std::vector<AudioSource*> sourceList;
+	std::vector<Source*> sourceList;
 	std::vector<int16_t*> bufferList;
 	uint8_t mixRatio; //half-half by default, 0 = only first track, 255 = only second track
 };

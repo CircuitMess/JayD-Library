@@ -36,7 +36,7 @@ const i2s_pin_config_t ringo_pin_config = {
 	.data_in_num = 33	//mic pin
 };
 
-AudioOutput* output;
+Output* output;
 void setup(){
 	Serial.begin(115200);
 
@@ -69,10 +69,10 @@ void setup(){
 	
 
 	// output = new AudioOutputI2S(i2s_config, ringo_pin_config, 0);
-	output = new AudioOutputFS("/output", &SD);
-	AudioMixer* mixer = new AudioMixer();
-	mixer->addSource(new AudioGeneratorWAV(new File(SD.open("/song1.wav", "r"))));
-	mixer->addSource(new AudioGeneratorWAV(new File(SD.open("/song2.wav", "r"))));
+	output = new OutputFS("/output", &SD);
+	Mixer* mixer = new Mixer();
+	mixer->addSource(new SourceWAV(new File(SD.open("/song1.wav", "r"))));
+	mixer->addSource(new SourceWAV(new File(SD.open("/song2.wav", "r"))));
 	// mixer->setMixRatio(255);
 	output->setSource(mixer);
 

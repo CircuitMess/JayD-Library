@@ -1,9 +1,9 @@
-#ifndef JAYD_AUDIOSOURCE_H
-#define JAYD_AUDIOSOURCE_H
+#ifndef JAYD_SOURCE_H
+#define JAYD_SOURCE_H
 
-#include "AudioGenerator.h"
+#include "Generator.h"
 
-class AudioSource : public AudioGenerator
+class Source : public Generator
 {
 public:
 	virtual int getBitsPerSample() = 0;

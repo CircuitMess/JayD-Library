@@ -1,6 +1,6 @@
-#include "AudioOutputFS.h"
+#include "OutputFS.h"
 #include <string>
-#include "DefaultAudioSettings.hpp"
+#include "../AudioSetup.hpp"
 struct wavHeader{
 	char RIFF[4];
 	uint32_t chunkSize;
@@ -17,23 +17,23 @@ struct wavHeader{
 	uint32_t dataSize; // == NumSamples * NumChannels * BitsPerSample/8
 };
 
-AudioOutputFS::AudioOutputFS(const char* path, fs::FS* filesystem) :
-		AudioOutput::AudioOutput(), path(path), filesystem(filesystem), recordingNum(0){
+OutputFS::OutputFS(const char* path, fs::FS* filesystem) :
+		Output::Output(), path(path), filesystem(filesystem), recordingNum(0){
 }
 
-AudioOutputFS::~AudioOutputFS(){
+OutputFS::~OutputFS(){
 	if(file != nullptr){
 		file->close();
 		delete file;
 	}
 }
 
-void AudioOutputFS::output(size_t numBytes){
+void OutputFS::output(size_t numBytes){
 	file->write((uint8_t*)inBuffer, numBytes);
 	dataLength+=numBytes;
 }
 
-void AudioOutputFS::start(){
+void OutputFS::start(){
 	dataLength = 0;
 	file = new fs::File(filesystem->open(path, "w"));
 	if(!(*file)){
@@ -43,7 +43,7 @@ void AudioOutputFS::start(){
 	writeHeader();
 }
 
-void AudioOutputFS::stop(){
+void OutputFS::stop(){
 	char name[100];
 	strncpy(name, file->name(), 100);
 	file->close();
@@ -64,7 +64,7 @@ void AudioOutputFS::stop(){
 	free(buffer);
 }
 
-void AudioOutputFS::writeHeader(){
+void OutputFS::writeHeader(){
 	wavHeader header;
 	memcpy(header.RIFF, "RIFF", 4);
 	header.chunkSize = 0; //corrected when stop() is called
@@ -72,11 +72,11 @@ void AudioOutputFS::writeHeader(){
 	memcpy(header.fmt, "fmt ", 4);
 	header.fmtSize = 16;
 	header.audioFormat = 1; //PCM
-	header.numChannels = DEFAULT_NUMCHANNELS; //2 channels
-	header.sampleRate = DEFAULT_SAMPLERATE;
-	header.byteRate = DEFAULT_SAMPLERATE * DEFAULT_NUMCHANNELS * DEFAULT_BYTESPERSAMPLE;
-	header.blockAlign = DEFAULT_NUMCHANNELS * DEFAULT_BYTESPERSAMPLE;
-	header.bitsPerSample = DEFAULT_BYTESPERSAMPLE * 8;
+	header.numChannels = NUMCHANNELS; //2 channels
+	header.sampleRate = SAMPLERATE;
+	header.byteRate = SAMPLERATE * NUMCHANNELS * BYTESPERSAMPLE;
+	header.blockAlign = NUMCHANNELS * BYTESPERSAMPLE;
+	header.bitsPerSample = BYTESPERSAMPLE * 8;
 	memcpy(header.data, "data", 4);
 	header.dataSize = 0; //corrected when stop() is called
 

@@ -1,20 +1,20 @@
-#ifndef JAYD_AUDIOGENERATORCONVERTER_H
-#define JAYD_AUDIOGENERATORCONVERTER_H
+#ifndef JAYD_CONVERTER_H
+#define JAYD_CONVERTER_H
 
-#include "AudioGenerator.h"
-#include "AudioSource.h"
+#include "Generator.h"
+#include "Source.h"
 #include "r8brain-free-src/r8bbase.h"
 #include "r8brain-free-src/CDSPResampler.h"
 
-class AudioGeneratorConverter : public AudioGenerator
+class Converter : public Generator
 {
 public:
-	AudioGeneratorConverter(AudioSource* source);
-	~AudioGeneratorConverter();
+	Converter(Source* source);
+	~Converter();
 	int generate(int16_t* outBuffer) override;
 
 private:
-	AudioSource* source;
+	Source* source;
 	int16_t* conversionBuffer;
 
 	r8b::CFixedBuffer< double > InBufs[2]; //max 2 channels in audio files

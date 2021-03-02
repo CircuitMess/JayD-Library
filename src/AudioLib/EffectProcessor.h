@@ -2,23 +2,23 @@
 #define JAYD_EFFECTPROCESSOR_H
 
 #include <Arduino.h>
-#include "AudioGenerator.h"
-#include "AudioEffect.h"
+#include "Generator.h"
+#include "Effect.h"
 #include <vector>
 
-class EffectProcessor : public AudioGenerator
+class EffectProcessor : public Generator
 {
 public:
-	EffectProcessor(AudioGenerator* generator);
+	EffectProcessor(Generator* generator);
 	~EffectProcessor();
 	int generate(int16_t* outBuffer) override;
-	void addEffect(AudioEffect* effect);
+	void addEffect(Effect* effect);
 	void removeEffect(int index);
-	AudioEffect* getEffect(int index);
+	Effect* getEffect(int index);
 
 private:
-	std::vector<AudioEffect*> effectList;
+	std::vector<Effect*> effectList;
 	int16_t *effectBuffer;
-	AudioGenerator* inputGenerator;
+	Generator* inputGenerator;
 };
 #endif

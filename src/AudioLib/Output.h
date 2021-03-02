@@ -1,16 +1,16 @@
-#ifndef JAYD_AUDIOOUTPUT_H
-#define JAYD_AUDIOOUTPUT_H
+#ifndef JAYD_OUTPUT_H
+#define JAYD_OUTPUT_H
 
 #include <Arduino.h>
 #include <Loop/LoopListener.h>
-class AudioGenerator;
+class Generator;
 
-class AudioOutput : public LoopListener
+class Output : public LoopListener
 {
 public:
-	AudioOutput();
-	~AudioOutput();
-	void setSource(AudioGenerator* gen);
+	Output();
+	~Output();
+	void setSource(Generator* gen);
 	void loop(uint _time) override;
 	virtual void stop() = 0;
 	virtual void start() = 0;
@@ -24,7 +24,7 @@ protected:
 
 private:
 	float gain; //0 - 1.0
-	AudioGenerator* generator;
+	Generator* generator;
 	bool running;
 };
 

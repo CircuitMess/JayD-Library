@@ -1,5 +1,5 @@
-#include "AudioGeneratorWAV.h"
-#include "DefaultAudioSettings.hpp"
+#include "SourceWAV.h"
+#include "../AudioSetup.hpp"
 
 //-------------------------------------------
 // Helper structs and funcs
@@ -28,17 +28,17 @@ inline void endian_swap(unsigned short& x){
 // ----------------------------------------------
 
 
-AudioGeneratorWAV::AudioGeneratorWAV() : file(nullptr), channels(0), sampleRate(0), bitsPerSample(0){
+SourceWAV::SourceWAV() : file(nullptr), channels(0), sampleRate(0), bitsPerSample(0){
 }
 
-AudioGeneratorWAV::AudioGeneratorWAV(fs::File *_file) : AudioGeneratorWAV(){
+SourceWAV::SourceWAV(fs::File *_file) : SourceWAV(){
 	file = _file;
 }
 
-AudioGeneratorWAV::~AudioGeneratorWAV(){
+SourceWAV::~SourceWAV(){
 }
 
-void AudioGeneratorWAV::readHeader(){
+void SourceWAV::readHeader(){
 	char *buffer = (char*)malloc(sizeof(wavHeader));
 	file->readBytes(buffer, sizeof(wavHeader));
 	
@@ -73,7 +73,7 @@ void AudioGeneratorWAV::readHeader(){
 	free(buffer);
 }
 
-int AudioGeneratorWAV::generate(int16_t *outBuffer){
+int SourceWAV::generate(int16_t *outBuffer){
 	if(file == nullptr){
 		Serial.println("file nullptr");
 		return 0;
@@ -87,28 +87,28 @@ int AudioGeneratorWAV::generate(int16_t *outBuffer){
 		readHeader();
 	}
 
-	return file->read((uint8_t*)outBuffer, DEFAULT_BUFFSIZE * DEFAULT_BYTESPERSAMPLE);
+	return file->read((uint8_t*)outBuffer, BUFFSIZE * BYTESPERSAMPLE);
 }
 
-int AudioGeneratorWAV::getBitsPerSample(){
+int SourceWAV::getBitsPerSample(){
 	return bitsPerSample;
 }
 
-int AudioGeneratorWAV::getSampleRate(){
+int SourceWAV::getSampleRate(){
 	return sampleRate;
 }
 
-int AudioGeneratorWAV::getChannels(){
+int SourceWAV::getChannels(){
 	return channels;
 }
 
-void AudioGeneratorWAV::open(fs::File *_file){
+void SourceWAV::open(fs::File *_file){
 	if(file != nullptr) delete file;
 	
 	file = _file;
 	channels, sampleRate, bitsPerSample = 0;
 }
 
-int AudioGeneratorWAV::available(){
+int SourceWAV::available(){
 	return file->available();
 }

@@ -1,11 +1,11 @@
-#ifndef JAYD_AUDIOGENERATOR_H
-#define JAYD_AUDIOGENERATOR_H
+#ifndef JAYD_GENERATOR_H
+#define JAYD_GENERATOR_H
 #include <Arduino.h>
 
-class AudioGenerator
+class Generator
 {
 public:
-	virtual ~AudioGenerator() = default;
+	virtual ~Generator() = default;
 	virtual int generate(int16_t *outBuffer) = 0;
 	virtual int available() = 0;
 };

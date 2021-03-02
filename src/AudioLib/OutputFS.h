@@ -1,15 +1,15 @@
-#ifndef JAYD_AUDIOOUTPUTFS_H
-#define JAYD_AUDIOOUTPUTFS_H
+#ifndef JAYD_OUTPUTFS_H
+#define JAYD_OUTPUTFS_H
 
-#include "AudioOutput.h"
+#include "Output.h"
 #include <FS.h>
 
 
-class AudioOutputFS : public AudioOutput
+class OutputFS : public Output
 {
 public:
-	AudioOutputFS(const char* path, fs::FS* filesystem);
-	~AudioOutputFS();
+	OutputFS(const char* path, fs::FS* filesystem);
+	~OutputFS();
 	void start() override;
 	void stop() override;
 

@@ -1,16 +1,16 @@
-#ifndef JAYD_AUDIOGENERATORWAV_H
-#define JAYD_AUDIOGENERATORWAV_H
+#ifndef JAYD_SOURCEWAV_H
+#define JAYD_SOURCEWAV_H
 
 #include <Arduino.h>
 #include <FS.h>
-#include "AudioSource.h"
+#include "Source.h"
 
-class AudioGeneratorWAV : public AudioSource
+class SourceWAV : public Source
 {
 public:
-	AudioGeneratorWAV();
-	AudioGeneratorWAV(fs::File *file);
-	~AudioGeneratorWAV();
+	SourceWAV();
+	SourceWAV(fs::File *file);
+	~SourceWAV();
 	int generate(int16_t* outBuffer) override;
 	int available() override;
 
