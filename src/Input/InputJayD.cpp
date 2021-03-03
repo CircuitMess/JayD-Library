@@ -19,7 +19,7 @@ InputJayD::InputJayD() : btnPressCallbacks(NUM_BTN, nullptr), btnReleaseCallback
 
 void InputJayD::reset(){
 	digitalWrite(JDNV_PIN_RESET, LOW);
-	delayMicroseconds(10);
+	delay(5);
 	digitalWrite(JDNV_PIN_RESET, HIGH);
 
 }
@@ -35,7 +35,7 @@ bool InputJayD::begin(){
 	pinMode(JDNV_PIN_RESET, OUTPUT);
 	digitalWrite(JDNV_PIN_RESET, HIGH);
 	reset();
-	delay(5);
+	delay(10);
 	Wire.beginTransmission(JDNV_ADDR);
 
 	if(Wire.endTransmission() != 0){
