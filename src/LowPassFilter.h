@@ -39,7 +39,7 @@ private:
 	float windowCoeffs[L] = {0};
 	float idealFilterCoeffs[L] = {0};
 
-	int16_t fDelay[L] = {0};
+	float fDelay[L] = {0};
 
 	int j = 0;
 
