@@ -5,10 +5,16 @@ Reverb::Reverb(){
 	decayFactor = 0.55f;
 	mixPercent = 0;
 
-	samplesBuffer = static_cast<int16_t *>(calloc(1024 * 30, sizeof(int16_t)));
+
+	Serial.println(ESP.getFreeHeap());
+
+	samplesBuffer = static_cast<float *>(calloc(1024 * EXTENDED_BUFFER, sizeof(float)));
 	if(!samplesBuffer){
 		printf("Allocating ERROR");
+		Serial.flush();
 	}
+
+	Serial.println(ESP.getFreeHeap());
 
 	sampleBufferCnt = 0;
 	startReverb = false;
