@@ -26,27 +26,27 @@ Reverb::Reverb(){
 
 int32_t Reverb::signalProcessing(uint32_t index, uint32_t delay0, uint32_t delay1, uint32_t delay2, uint32_t delay3){
 
-	int32_t acc;
+	float acc;
 
-	acc = (1-((float)mixPercent/100.f)) * (float)samplesBuffer[index] +
-			((float)mixPercent/100.f) * (
-					decayFactor * (float)samplesBuffer[delay0] +
-					(decayFactor-0.13) * (float)samplesBuffer[delay1] +
-					(decayFactor-0.27) * (float)samplesBuffer[delay2] +
-					(decayFactor-0.31) * (float)samplesBuffer[delay3]
+	acc = (1-(mixPercent/100.0f)) * samplesBuffer[index] +
+			(mixPercent/100.0f) * (
+					decayFactor * samplesBuffer[delay0] +
+					(decayFactor-0.13f) * samplesBuffer[delay1] +
+					(decayFactor-0.27f) * samplesBuffer[delay2] +
+					(decayFactor-0.31f) * samplesBuffer[delay3]
 					);
 
 	if(acc < 0){
 
-		treshold = -treshold;
+		threshold = -threshold;
 	}
 
-	if(abs(acc) >= abs(treshold)){
+	if(abs(acc) >= abs(threshold)){
 
-		uint16_t window = maxAmp - treshold;
-		int32_t over = acc - treshold;
-		float overC = (float)over/(float)window;
-		acc = treshold + (float)over/(1.0/cos(overC*PI/2.0));
+		float window = maxAmp - threshold;
+		float over = acc - threshold;
+		float overC = over/window;
+		acc = threshold + over * cos(overC*M_PI_2);
 	}
 
 	return (int16_t)acc;
