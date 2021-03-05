@@ -113,13 +113,9 @@ void HighPassFilter::setIntensity(uint8_t intensity){
 
 	intensity = intensity/8;
 
-	cutOffFrequency = ((float)intensity/236.0f)*(float)PI;
+	cutOffFrequency = ((float)intensity/237.0f)*(float)PI;
 
-	if(intensity < 1){
-		intensity = 1;
-	}
-
-	gain = (intensity/236.0f)*1.0f + 1.0f;
+	gain = exp(intensity/237.0f) / 2.0f;
 
 	generateFilterCoeffs();
 
