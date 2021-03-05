@@ -52,6 +52,9 @@ void Reverb::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numBytes){
 		samplesBuffer[i + (numBytes/2)*sampleBufferCnt] = inBuffer[i];
 	}
 
+	float lastIn = 0, lastOut = 0;
+	float c = 0.15;
+
 	if(startReverb){
 		for(int i=0; i<numBytes/2; i++){
 
@@ -62,6 +65,13 @@ void Reverb::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numBytes){
 					i + (numBytes/2)*((sampleBufferCnt + 3) % 30),
 					i + (numBytes/2)*((sampleBufferCnt + 4) % 30)
 					);
+
+			float lastInTemp = outBuffer[i];
+
+			outBuffer[i] = - c * (float)outBuffer[i] + lastIn + c * lastOut;
+			lastIn = lastInTemp;
+			lastOut = outBuffer[i];
+
 		}
 	}
 	else{
