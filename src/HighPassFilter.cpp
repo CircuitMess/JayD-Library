@@ -13,7 +13,7 @@ void HighPassFilter::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numS
 
 	for(int i = 0; i < numSamples/2; ++i){
 
-		*(outBuffer + i) = signalProcessing(*(inBuffer + i));
+		outBuffer[i] = signalProcessing(inBuffer[i]);
 	}
 }
 
