@@ -30,7 +30,7 @@ void BitCrusher::setIntensity(uint8_t intensity){
 
 	/// max intensity = 236
 
-	scaleFactor = (intensity / 236.0f) * pow(2, 14);
+	scaleFactor = (intensity / 237.0f) * pow(2, 14);
 	scaleFactor = max((uint16_t) 1, scaleFactor);
 
 }
