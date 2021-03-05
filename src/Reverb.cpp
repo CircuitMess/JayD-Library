@@ -102,7 +102,7 @@ void Reverb::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numBytes){
 
 void Reverb::setIntensity(uint8_t intensity){
 
-	mixPercent = ((float)intensity/236.0f) * 50;
+	mixPercent = ((float)intensity/237.0f) * 50;
 }
 
 Reverb::~Reverb() noexcept{
