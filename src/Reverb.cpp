@@ -62,6 +62,8 @@ void Reverb::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numBytes){
 	float c = 0.15;
 
 	if(startReverb){
+		//uint32_t beginTime = micros();
+
 		for(int i=0; i<numBytes/2; i++){
 
 			outBuffer[i] = signalProcessing(
@@ -79,6 +81,8 @@ void Reverb::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numBytes){
 			lastOut = outBuffer[i];
 
 		}
+
+		//printf("It takes %ld us to process %d samples.\n",micros()-beginTime, numBytes/2);
 	}
 	else{
 		for(int i=0; i<numBytes/2; i++){
