@@ -109,13 +109,11 @@ int16_t LowPassFilter::signalProcessing(int16_t sample){
 
 void LowPassFilter::setIntensity(uint8_t intensity){
 
-	cutOffFrequency = (float)PI - ((float)intensity/236.0f)*(float)PI;
+	intensity *= 0.9f;
 
-	if(intensity < 1){
-		intensity = 1;
-	}
+	cutOffFrequency = (float)PI - ((float)intensity/237.0f)*(float)PI;
 
-	gain = (intensity/236.0f)*1.0f + 1;
+	gain = exp(intensity/237.0f) / 2.0f;
 
 	generateFilterCoeffs();
 }
