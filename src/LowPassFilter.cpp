@@ -72,41 +72,39 @@ int LowPassFilter::circularIndex(int index, int increment, uint8_t irl){
 
 int16_t LowPassFilter::signalProcessing(int16_t sample){
 
-	int i;
-	int32_t acc = 0;
+	float acc = 0;
 
 	fDelay[j] = sample;
 
 	j = circularIndex(j, 1, L);
 
-	for(i = 0; i<L; ++i){
+	for( int i = 0; i<L; ++i){
 
-		acc += coeffs[i]*(float)fDelay[j]*gain;
+		acc += coeffs[i]*fDelay[j]*gain;
 		j = circularIndex(j, 1, L);
 	}
 
 
-	uint16_t maxAmp = pow(2,15)-1;
-	int32_t treshold = maxAmp * 0.9;
-	uint16_t window = maxAmp - treshold;
+	float maxAmp = pow(2,15)-1;
+	float threshold = maxAmp * 0.9;
+	float window = maxAmp - threshold;
 
 	if(sample < 0){
 
-		treshold = -treshold;
+		threshold = -threshold;
 	}
-	//printf("%d %d\n", sample, acc);
 
-	if(abs(acc) >= abs(treshold)){
+	if(abs(acc) >= abs(threshold)){
 
-		int16_t over = acc - treshold;
-		float overC = (float)over/(float)window;
+		float over = acc - threshold;
+		float overC = over/window;
 
-		acc = treshold + (float)over/(1.0/cos(overC*PI/2.0));
+		acc = threshold + over * cos(overC*M_PI_2);
 
-		return acc;
+		return (int16_t)acc;
 	}
 	else
-		return acc;
+		return (int16_t)acc;
 }
 
 void LowPassFilter::setIntensity(uint8_t intensity){
