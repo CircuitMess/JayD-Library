@@ -20,7 +20,7 @@ Reverb::Reverb(){
 	startReverb = false;
 
 	maxAmp = pow(2,15)-1;
-	treshold = maxAmp * 0.8;
+	threshold = maxAmp * 0.9;
 }
 
 
