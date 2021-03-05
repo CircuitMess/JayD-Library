@@ -68,10 +68,10 @@ void Reverb::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numBytes){
 
 			outBuffer[i] = signalProcessing(
 					i + (numBytes/2)*(sampleBufferCnt),
-					i + (numBytes/2)*((sampleBufferCnt + 1) % 30),
-					i + (numBytes/2)*((sampleBufferCnt + 2) % 30),
-					i + (numBytes/2)*((sampleBufferCnt + 3) % 30),
-					i + (numBytes/2)*((sampleBufferCnt + 4) % 30)
+					i + (numBytes/2)*((sampleBufferCnt + 1) % EXTENDED_BUFFER),
+					i + (numBytes/2)*((sampleBufferCnt + 2) % EXTENDED_BUFFER),
+					i + (numBytes/2)*((sampleBufferCnt + 3) % EXTENDED_BUFFER),
+					i + (numBytes/2)*((sampleBufferCnt + 4) % EXTENDED_BUFFER)
 					);
 
 			float lastInTemp = outBuffer[i];
@@ -92,7 +92,7 @@ void Reverb::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numBytes){
 	}
 
 
-	if(++sampleBufferCnt >= 30){
+	if(++sampleBufferCnt >= EXTENDED_BUFFER){
 
 		startReverb = true;
 		sampleBufferCnt = 0;
