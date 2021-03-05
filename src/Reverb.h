@@ -3,6 +3,8 @@
 
 #include "JayD.hpp"
 
+#define EXTENDED_BUFFER 15
+
 class Reverb : public AudioEffect{
 
 public:
