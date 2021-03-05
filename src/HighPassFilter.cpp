@@ -11,10 +11,14 @@ HighPassFilter::HighPassFilter(){
 
 void HighPassFilter::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numSamples){
 
+	//uint32_t beginTime = micros();
+
 	for(int i = 0; i < numSamples/2; ++i){
 
 		outBuffer[i] = signalProcessing(inBuffer[i]);
 	}
+
+	//printf("It takes %ld time to process %d samples.\n",micros()-beginTime, numSamples/2);
 }
 
 void HighPassFilter::idealFilterResponse(){
