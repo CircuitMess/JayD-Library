@@ -35,10 +35,10 @@ void LowPassFilter::windowResponse(){
 
 	for(int n = -(L-1)/2; n <= (L-1)/2; ++n){
 
-		windowCoeffs[n + (L-1)/2] = 0.42 + 0.5*cos((2*PI*n)/(L-1)) + 0.08*cos((4*PI*n)/(L-1));	// Blackman
+		//windowCoeffs[n + (L-1)/2] = 0.42 + 0.5*cos((2*PI*n)/(L-1)) + 0.08*cos((4*PI*n)/(L-1));	// Blackman
 
-		//float alpha = 0.5;
-		//windowCoeffs[n + (L-1)/2] = 0.5 + (1-alpha)*cos((2*PI*n)/(L-1));	// Hann
+		float alpha = 0.5;
+		windowCoeffs[n + (L-1)/2] = 0.5 + (1-alpha)*cos((2*PI*n)/(L-1));	// Hann
 	}
 
 }
