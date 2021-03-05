@@ -10,7 +10,7 @@ void LowPassFilter::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numSa
 
 	for(int i = 0; i < numSamples/2; ++i){
 
-		*(outBuffer + i) = signalProcessing(*(inBuffer + i));
+		outBuffer[i] = signalProcessing(inBuffer[i]);
 
 	}
 
