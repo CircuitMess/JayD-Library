@@ -24,7 +24,7 @@ Reverb::Reverb(){
 }
 
 
-int32_t Reverb::signalProcessing(uint32_t index, uint32_t delay0, uint32_t delay1, uint32_t delay2, uint32_t delay3){
+int16_t Reverb::signalProcessing(uint32_t index, uint32_t delay0, uint32_t delay1, uint32_t delay2, uint32_t delay3){
 
 	float acc;
 
