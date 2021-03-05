@@ -8,11 +8,11 @@ Converter::Converter(Source* source) : source(source)
 	// 	buffSize*=2;
 	// }
 
-	const int InBufCapacity = BUFFSIZE; //taking in 800 samples at a time
+	const int InBufCapacity = BUFFER_SAMPLES; //taking in 800 samples at a time
 	for( uint8_t i = 0; i < source->getChannels(); i++ )
 	{
 		InBufs[ i ].alloc( InBufCapacity );
-		Resamps[ i ] = new r8b::CDSPResampler24( source->getSampleRate(), SAMPLERATE, InBufCapacity );
+		Resamps[ i ] = new r8b::CDSPResampler24( source->getSampleRate(), SAMPLE_RATE, InBufCapacity );
 	}
 }
 
@@ -20,7 +20,7 @@ Converter::~Converter()
 {
 }
 
-int Converter::generate(int16_t* outBuffer)
+size_t Converter::generate(int16_t* outBuffer)
 {
 	int readSamples = source->generate((int16_t*)(InBufs[0].getPtr()));
 
@@ -46,7 +46,7 @@ int Converter::generate(int16_t* outBuffer)
 	
 	//resample to 44100Hz
 	int WriteCount;
-	if(source->getSampleRate() != SAMPLERATE){
+	if(source->getSampleRate() != SAMPLE_RATE){
 		double* opp[ source->getChannels() ];
 
 		for(int i = 0; i < source->getChannels(); i++ )

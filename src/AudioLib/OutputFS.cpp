@@ -28,9 +28,9 @@ OutputFS::~OutputFS(){
 	}
 }
 
-void OutputFS::output(size_t numBytes){
-	file->write((uint8_t*)inBuffer, numBytes);
-	dataLength+=numBytes;
+void OutputFS::output(size_t numSamples){
+	file->write((uint8_t*)inBuffer, numSamples*NUM_CHANNELS*BYTES_PER_SAMPLE);
+	dataLength+=numSamples*NUM_CHANNELS*BYTES_PER_SAMPLE;
 }
 
 void OutputFS::start(){
@@ -72,11 +72,11 @@ void OutputFS::writeHeader(){
 	memcpy(header.fmt, "fmt ", 4);
 	header.fmtSize = 16;
 	header.audioFormat = 1; //PCM
-	header.numChannels = NUMCHANNELS; //2 channels
-	header.sampleRate = SAMPLERATE;
-	header.byteRate = SAMPLERATE * NUMCHANNELS * BYTESPERSAMPLE;
-	header.blockAlign = NUMCHANNELS * BYTESPERSAMPLE;
-	header.bitsPerSample = BYTESPERSAMPLE * 8;
+	header.numChannels = NUM_CHANNELS; //2 channels
+	header.sampleRate = SAMPLE_RATE;
+	header.byteRate = SAMPLE_RATE * NUM_CHANNELS * BYTES_PER_SAMPLE;
+	header.blockAlign = NUM_CHANNELS * BYTES_PER_SAMPLE;
+	header.bitsPerSample = BYTES_PER_SAMPLE * 8;
 	memcpy(header.data, "data", 4);
 	header.dataSize = 0; //corrected when stop() is called
 

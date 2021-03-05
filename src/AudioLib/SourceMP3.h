@@ -11,7 +11,7 @@ public:
 	SourceMP3();
 	SourceMP3(fs::File *file);
 	~SourceMP3();
-	int generate(int16_t* outBuffer) override;
+	size_t generate(int16_t* outBuffer) override;
 	int available() override;
 
 	int getBitsPerSample() override;

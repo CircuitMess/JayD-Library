@@ -28,8 +28,8 @@ Mixer::~Mixer()
 	}
 }
 
-int Mixer::generate(int16_t *outBuffer){
-	memset(outBuffer, 0, BUFFSIZE * BYTESPERSAMPLE);
+size_t Mixer::generate(int16_t *outBuffer){
+	memset(outBuffer, 0, BUFFER_SIZE);
 	int receivedSamples[sourceList.size()] = {0};
 
 	for(uint8_t i = 0; i < sourceList.size(); i++){
@@ -40,15 +40,15 @@ int Mixer::generate(int16_t *outBuffer){
 		}
 	}
 
-	for(uint16_t i = 0; i < BUFFSIZE; i++){
+	for(uint16_t i = 0; i < BUFFER_SAMPLES*NUM_CHANNELS; i++){
 		int32_t wave = 0;
 		for(uint8_t j = 0; j < sourceList.size(); j++){
-			if(bufferList[j] != nullptr && (receivedSamples[j] / BYTESPERSAMPLE) > i){
-				if(sourceList.size() == 2){
-					wave += bufferList[j][i] * (float)((j == 1 ? (float)(mixRatio) : (float)(255.0 - mixRatio))/255.0); //use the mixer if only 2 tracks found
-				}else{
-					wave += bufferList[j][i] * (float)(1.0/(float)(sourceList.size())); // evenly distribute all tracks
-				}
+			if(bufferList[j] == nullptr || receivedSamples[j] < i/NUM_CHANNELS ) break;
+
+			if(sourceList.size() == 2){
+				wave += bufferList[j][i] * (float)((j == 1 ? (float)(mixRatio) : (float)(255.0 - mixRatio))/255.0); //use the mixer if only 2 tracks found
+			}else{
+				wave += bufferList[j][i] * (float)(1.0/(float)(sourceList.size())); // evenly distribute all tracks
 			}
 		}
 		outBuffer[i] = clip(wave);
@@ -67,7 +67,7 @@ int Mixer::available(){
 
 void Mixer::addSource(Source* generator){
 	sourceList.push_back(generator);
-	bufferList.push_back((int16_t*)calloc(BUFFSIZE, BYTESPERSAMPLE));
+	bufferList.push_back((int16_t*)calloc(BUFFER_SIZE, sizeof(byte)));
 }
 
 void Mixer::setMixRatio(uint8_t ratio){

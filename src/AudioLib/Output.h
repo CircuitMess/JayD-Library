@@ -19,7 +19,7 @@ public:
 	bool isRunning();
 
 protected:
-	virtual void output(size_t numBytes) = 0;
+	virtual void output(size_t numSamples) = 0;
 	int16_t *inBuffer;
 
 private:

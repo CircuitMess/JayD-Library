@@ -10,7 +10,7 @@ class Mixer : public Generator
 public:
 	Mixer();
 	~Mixer();
-	int generate(int16_t* outBuffer) override;
+	size_t generate(int16_t* outBuffer) override;
 	int available() override;
 
 	void addSource(Source* source);

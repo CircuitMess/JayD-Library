@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 project(JayD-Library)
-set(PORT /dev/ttyUSB0)
+set(PORT COM4)
 set(DEVICE cm:esp32:ringo)
 set(CMAKE_CXX_STANDARD 11)
 

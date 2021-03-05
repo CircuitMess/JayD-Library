@@ -68,8 +68,8 @@ void setup(){
 	// }
 	
 
-	// output = new AudioOutputI2S(i2s_config, ringo_pin_config, 0);
-	output = new OutputFS("/output", &SD);
+	output = new OutputI2S(i2s_config, ringo_pin_config, 0);
+	// output = new OutputFS("/output", &SD);
 	Mixer* mixer = new Mixer();
 	mixer->addSource(new SourceWAV(new File(SD.open("/song1.wav", "r"))));
 	mixer->addSource(new SourceWAV(new File(SD.open("/song2.wav", "r"))));
@@ -83,7 +83,7 @@ void setup(){
 
 	// output->setSource(new AudioGeneratorWAV(new fs::File(fs::FileImplPtr(new SerialFlashFileAdapter("joke1.wav")))));
 	LoopManager::addListener(output);
-	output->setGain(0.5);
+	output->setGain(0.2);
 }
 
 void loop(){

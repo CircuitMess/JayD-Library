@@ -10,7 +10,7 @@ SourceMP3::SourceMP3(fs::File *_file) : SourceMP3(){
 SourceMP3::~SourceMP3(){
 }
 
-int SourceMP3::generate(int16_t *outBuffer){
+size_t SourceMP3::generate(int16_t *outBuffer){
 
 	Serial.println("generate start");
 	delay(6);

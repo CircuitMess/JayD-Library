@@ -73,7 +73,7 @@ void SourceWAV::readHeader(){
 	free(buffer);
 }
 
-int SourceWAV::generate(int16_t *outBuffer){
+size_t SourceWAV::generate(int16_t *outBuffer){
 	if(file == nullptr){
 		Serial.println("file nullptr");
 		return 0;
@@ -87,7 +87,7 @@ int SourceWAV::generate(int16_t *outBuffer){
 		readHeader();
 	}
 
-	return file->read((uint8_t*)outBuffer, BUFFSIZE * BYTESPERSAMPLE);
+	return (file->read((uint8_t*)outBuffer, BUFFER_SIZE) / (BYTES_PER_SAMPLE*NUM_CHANNELS));
 }
 
 int SourceWAV::getBitsPerSample(){
@@ -110,5 +110,5 @@ void SourceWAV::open(fs::File *_file){
 }
 
 int SourceWAV::available(){
-	return file->available();
+	return (file->available()/(NUM_CHANNELS*BYTES_PER_SAMPLE));
 }

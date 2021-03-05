@@ -11,7 +11,7 @@ class Converter : public Generator
 public:
 	Converter(Source* source);
 	~Converter();
-	int generate(int16_t* outBuffer) override;
+	size_t generate(int16_t* outBuffer) override;
 
 private:
 	Source* source;

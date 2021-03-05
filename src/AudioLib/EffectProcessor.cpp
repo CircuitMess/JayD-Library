@@ -2,7 +2,7 @@
 #include "../AudioSetup.hpp"
 EffectProcessor::EffectProcessor(Generator* generator) : effectBuffer(nullptr), inputGenerator(generator)
 {
-	effectBuffer = (int16_t*)calloc(BUFFSIZE, BYTESPERSAMPLE);
+	effectBuffer = (int16_t*)calloc(BUFFER_SAMPLES, BYTES_PER_SAMPLE);
 }
 
 EffectProcessor::~EffectProcessor()
@@ -20,7 +20,7 @@ EffectProcessor::~EffectProcessor()
 	}
 }
 
-int EffectProcessor::generate(int16_t* outBuffer){
+size_t EffectProcessor::generate(int16_t* outBuffer){
 	int receivedBytes = inputGenerator->generate(effectBuffer);
 	if(effectList.empty()){
 		memcpy(outBuffer, effectBuffer, receivedBytes);
@@ -48,4 +48,9 @@ void EffectProcessor::removeEffect(int index){
 
 Effect* EffectProcessor::getEffect(int index){
 	return effectList[index];
+}
+
+int EffectProcessor::available(){
+	if(inputGenerator == nullptr) return 0;
+	return inputGenerator->available();
 }

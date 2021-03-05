@@ -3,18 +3,22 @@ These settings are usually defined in the board definitions file,
 but if you're compiling for a board that doesn't have them defined, you can do so here.
 */
 
-#ifndef BUFFSIZE
-#define BUFFSIZE 1024 //number of samples in the buffer
+#ifndef BUFFER_SAMPLES
+#define BUFFER_SAMPLES 1024 //number of samples in the buffer
 #endif
 
-#ifndef SAMPLERATE
-#define SAMPLERATE 16000
+#ifndef SAMPLE_RATE
+#define SAMPLE_RATE 16000
 #endif
 
-#ifndef BYTESPERSAMPLE
-#define BYTESPERSAMPLE 2
+#ifndef BYTES_PER_SAMPLE
+#define BYTES_PER_SAMPLE 2
 #endif
 
-#ifndef NUMCHANNELS
-#define NUMCHANNELS 2
+#ifndef NUM_CHANNELS
+#define NUM_CHANNELS 2
+#endif
+
+#ifndef BUFFER_SIZE
+#define BUFFER_SIZE	(BUFFER_SAMPLES * BYTES_PER_SAMPLE * NUM_CHANNELS)
 #endif
