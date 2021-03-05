@@ -42,6 +42,14 @@ private:
 	float fDelay[L] = {0};
 
 	int j = 0;
+
+	float filter;
+	float filter2;
+
+	float val;
+	float fAmp;
+	float fAmpI;
+	float fAmpS;
 };
 
 

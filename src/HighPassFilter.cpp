@@ -75,7 +75,7 @@ long HighPassFilter::circularIndex(long index, long increment, uint8_t irl){
 
 int16_t HighPassFilter::signalProcessing(int16_t sample){
 
-	float acc = 0;
+	/*float acc = 0;
 
 	fDelay[j] = sample;
 
@@ -106,17 +106,47 @@ int16_t HighPassFilter::signalProcessing(int16_t sample){
 		return (int16_t)acc;
 	}
 	else
-		return (int16_t)acc;
+		return (int16_t)acc;*/
+
+	filter = filter2;
+	filter2 = sample;
+	sample = ((float)sample * fAmpI) + ((filter2 - filter) * fAmp);
+
+	float maxAmp = pow(2,15)-1;
+	float threshold = maxAmp * 0.9;
+	float window = maxAmp - threshold;
+
+	if(sample < 0){
+
+		threshold = -threshold;
+	}
+
+	if(abs(sample) >= abs(threshold)){
+
+		float over = (float)sample - threshold;
+		float overC = over/window;
+
+		sample = threshold + over * cos(overC*M_PI_2);
+
+		return (int16_t)sample;
+	}
+	else
+		return (int16_t)sample;
 }
 
 void HighPassFilter::setIntensity(uint8_t intensity){
 
-	intensity = intensity/8;
+	/*intensity = intensity/8;
 
 	cutOffFrequency = ((float)intensity/237.0f)*(float)PI;
 
 	gain = exp(intensity/237.0f) / 2.0f;
 
-	generateFilterCoeffs();
+	generateFilterCoeffs();*/
+
+	val = (float)intensity/237.0f;
+	fAmp = val;
+	fAmpI = 1 - val;
+	fAmpS = 1 + (val * val * 1);
 
 }

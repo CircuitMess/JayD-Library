@@ -43,6 +43,15 @@ private:
 
 	int j = 0;
 
+	float filter;
+	float filter2;
+	float filter3;
+
+	float val;
+	float fAmp;
+	float fAmpI;
+	float fAmpS;
+
 };
 
 
