@@ -3,7 +3,7 @@
 
 #include "JayD.hpp"
 
-#define EXTENDED_BUFFER 15
+#define ECHO_LEN 25000
 
 class Reverb : public AudioEffect{
 
@@ -19,17 +19,13 @@ public:
 
 private:
 
-	int16_t signalProcessing(uint32_t index, uint32_t delay0, uint32_t delay1, uint32_t delay2, uint32_t delay3);
+	int16_t signalProcessing(int16_t sample);
 
-	float* samplesBuffer = nullptr;
-	uint8_t sampleBufferCnt;
+	int16_t* echo = nullptr;
 
-	bool startReverb;
-	float decayFactor;
-	float mixPercent;
+	uint16_t echoCount = 0;
+	float echoAmount = 0;
 
-	float maxAmp;
-	float threshold;
 };
 
 
