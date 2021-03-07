@@ -40,34 +40,20 @@ void OutputFS::start(){
 		Serial.println("Couldn't open file for output");
 		return;
 	}
-	writeHeader();
+	writeHeader(0); // for good measure
+	file->seek(sizeof(wavHeader));
 }
 
 void OutputFS::stop(){
-	char name[100];
-	strncpy(name, file->name(), 100);
-	file->close();
-	delete file;
-
-	file = new fs::File(filesystem->open(name, "r+"));
-	char *buffer = (char*)malloc(sizeof(wavHeader));
-	file->seek(0);
-	file->readBytes(buffer, sizeof(wavHeader));
-	wavHeader *header = (wavHeader*)buffer;
-	header->chunkSize = dataLength + 36;
-	header->dataSize = dataLength;
-	file->seek(0);
-	file->write((uint8_t*)header, sizeof(wavHeader));
-
+	writeHeader(dataLength);
 	file->close();
 	recordingNum++;
-	free(buffer);
 }
 
-void OutputFS::writeHeader(){
+void OutputFS::writeHeader(size_t size){
 	wavHeader header;
 	memcpy(header.RIFF, "RIFF", 4);
-	header.chunkSize = 0; //corrected when stop() is called
+	header.chunkSize = size + 36;
 	memcpy(header.WAVE, "WAVE", 4);
 	memcpy(header.fmt, "fmt ", 4);
 	header.fmtSize = 16;
@@ -78,7 +64,7 @@ void OutputFS::writeHeader(){
 	header.blockAlign = NUM_CHANNELS * BYTES_PER_SAMPLE;
 	header.bitsPerSample = BYTES_PER_SAMPLE * 8;
 	memcpy(header.data, "data", 4);
-	header.dataSize = 0; //corrected when stop() is called
+	header.dataSize = size;
 
 	file->seek(0);
 	file->write((uint8_t*)&header, sizeof(wavHeader));

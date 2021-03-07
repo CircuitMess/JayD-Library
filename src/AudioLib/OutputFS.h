@@ -23,7 +23,7 @@ private:
 	size_t recordingNum;
 	size_t dataLength;
 
-	void writeHeader();
+	void writeHeader(size_t size);
 };
 
 
