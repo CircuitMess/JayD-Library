@@ -3,11 +3,12 @@
 #include <Loop/LoopManager.h>
 #include "../AudioSetup.hpp"
 
-Output::Output() : 
+Output::Output(bool timed) :
 		inBuffer(nullptr),
 		gain(1.0),
 		generator(nullptr),
-		running(false){
+		running(false),
+		timed(timed){
 
 	inBuffer = (int16_t*)calloc(BUFFER_SIZE, sizeof(byte));
 }
@@ -25,8 +26,18 @@ void Output::setSource(Generator* generator){
 
 void Output::loop(uint _time){
 	if(generator == nullptr) return;
+	if(!running) return;
 
-	size_t receivedSamples = 0;
+	if(timed){
+		// TODO: check timings
+		uint32_t m = micros();
+		if(m - lastSample <= 0.99f * (float) BUFFER_SAMPLES * (1000000.0f / (float) SAMPLE_RATE)) return;
+		output(receivedSamples);
+		lastSample += (float) BUFFER_SAMPLES * (1000000.0f / (float) SAMPLE_RATE);
+	}else{
+		output(receivedSamples);
+	}
+
 	receivedSamples = generator->generate(inBuffer);
 	if(receivedSamples == 0 && running){
 		stop();
@@ -38,10 +49,6 @@ void Output::loop(uint _time){
 	}
 	for(uint32_t i = 0; i < receivedSamples*NUM_CHANNELS; i++){
 		*(inBuffer + i) = static_cast<int16_t>((*(inBuffer + i)) * gain);
-	}
-	
-	if(running){
-		output(receivedSamples);
 	}
 }
 

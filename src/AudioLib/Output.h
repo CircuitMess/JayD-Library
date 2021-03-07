@@ -8,7 +8,7 @@ class Generator;
 class Output : public LoopListener
 {
 public:
-	Output();
+	Output(bool timed = false);
 	~Output();
 	void setSource(Generator* gen);
 	void loop(uint _time) override;
@@ -24,8 +24,10 @@ protected:
 
 private:
 	float gain; //0 - 1.0
-	Generator* generator;
 	bool running;
+	uint32_t lastSample = 0;
+	size_t receivedSamples = 0;
+	bool timed = false;
 };
 
 
