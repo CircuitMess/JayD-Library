@@ -26,14 +26,14 @@ size_t Converter::generate(int16_t* outBuffer)
 
 	//separate into 2 buffers if necessary
 	if(source->getChannels() == 2){
-		if(source->getBitsPerSample() == 16){
+		if(source->getBytesPerSample() == 16){
 			for(int32_t i = 0; i < readSamples/2; i++){
 				((int16_t*)(InBufs[1].getPtr()))[i] = ((int16_t*)(InBufs[0].getPtr()))[i + 1];
 				if(i > 0){
 					memmove(((int16_t*)(InBufs[0].getPtr())) + i - 1, ((int16_t*)(InBufs[0].getPtr())) + i, (readSamples - i*2)*sizeof(int16_t));
 				}
 			}
-		}else if(source->getBitsPerSample() == 32){
+		}else if(source->getBytesPerSample() == 32){
 			for(int32_t i = 0; i < readSamples/2; i++){
 				((int32_t*)(InBufs[1].getPtr()))[i] = ((int32_t*)(InBufs[0].getPtr()))[i + 1];
 				if(i > 0){

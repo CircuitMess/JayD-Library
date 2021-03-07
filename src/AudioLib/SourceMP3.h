@@ -14,18 +14,11 @@ public:
 	size_t generate(int16_t* outBuffer) override;
 	int available() override;
 
-	int getBitsPerSample() override;
-	int getSampleRate() override;
-	int getChannels() override;
-
 	void open(fs::File *file);
 
 private:
 	fs::File *file;
 
-	uint8_t channels;
-	uint32_t sampleRate;
-	uint8_t bitsPerSample;
 };
 
 

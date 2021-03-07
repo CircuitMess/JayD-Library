@@ -14,9 +14,6 @@ public:
 	size_t generate(int16_t* outBuffer) override;
 	int available() override;
 
-	int getBitsPerSample() override;
-	int getSampleRate() override;
-	int getChannels() override;
 	uint16_t getDuration() override;
 	uint16_t getElapsed() override;
 	void seek(uint16_t time, fs::SeekMode mode) override;
@@ -26,9 +23,6 @@ public:
 private:
 	fs::File *file;
 
-	uint8_t channels;
-	uint32_t sampleRate;
-	uint8_t bitsPerSample;
 	size_t dataSize;
 	size_t readData;
 	bool readHeader();

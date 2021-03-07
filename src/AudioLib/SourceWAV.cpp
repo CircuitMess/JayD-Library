@@ -64,7 +64,7 @@ bool SourceWAV::readHeader(){
 	}
 	channels = header->numChannels;
 	sampleRate = header->sampleRate;
-	bitsPerSample = header->bitsPerSample;
+	bytesPerSample = header->bitsPerSample / 8;
 	dataSize = header->dataSize;
 	free(buffer);
 	return true;
@@ -80,7 +80,7 @@ size_t SourceWAV::generate(int16_t *outBuffer){
 		return 0;
 	}
 
-	if(sampleRate == 0 || channels == 0 || bitsPerSample == 0){
+	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0){
 		if(!readHeader()) return 0;
 	}
 	int readBytes = file->read((uint8_t*)outBuffer, BUFFER_SIZE);
@@ -108,23 +108,24 @@ void SourceWAV::open(fs::File *_file){
 }
 
 int SourceWAV::available(){
-	return (file->available()/(channels*bitsPerSample));
+	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0) return 0;
+	return (file->available()/(channels*bytesPerSample));
 }
 
 uint16_t SourceWAV::getDuration(){
-	if(sampleRate == 0 || channels == 0 || bitsPerSample == 0) return 0;
-	return int(dataSize/(channels*(bitsPerSample/8)*sampleRate));
+	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0) return 0;
+	return int(dataSize/(channels*bytesPerSample*sampleRate));
 }
 
 uint16_t SourceWAV::getElapsed(){
-	if(sampleRate == 0 || channels == 0 || bitsPerSample == 0 || readData == 0) return 0;
-	return int(readData/(channels*(bitsPerSample/8)*sampleRate));
+	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0 || readData == 0) return 0;
+	return int(readData/(channels*bytesPerSample*sampleRate));
 }
 
 void SourceWAV::seek(uint16_t time, fs::SeekMode mode){
-	if(sampleRate == 0 || channels == 0 || bitsPerSample == 0 ) return;
-	size_t offset = time*sampleRate*channels*(bitsPerSample/8);
-	if(offset > file->size()) return;
+	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0 ) return;
+	size_t offset = time*sampleRate*channels*bytesPerSample;
+	if(offset >= file->size()) return;
 
 	switch(mode){
 		case fs::SeekSet:
