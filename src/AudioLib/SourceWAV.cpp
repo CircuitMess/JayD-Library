@@ -138,19 +138,5 @@ void SourceWAV::seek(uint16_t time, fs::SeekMode mode){
 	size_t offset = time*sampleRate*channels*bytesPerSample;
 	if(offset >= file->size()) return;
 
-	switch(mode){
-		case fs::SeekSet:
-			file->seek(offset + sizeof(wavHeader));
-			break;
-		case fs::SeekEnd:
-			file->seek(file->size() - offset);
-			break;
-		case fs::SeekCur:
-			if(file->position() + offset >= file->size()) break;
-			if(file->position() == 0){
-				offset+=sizeof(wavHeader);
-			}
-			file->seek(file->position() + offset);
-			break;
-	}
+	file->seek(offset, mode);
 }
