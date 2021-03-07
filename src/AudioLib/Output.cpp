@@ -48,7 +48,7 @@ void Output::loop(uint _time){
 		running = true;
 	}
 	for(uint32_t i = 0; i < receivedSamples*NUM_CHANNELS; i++){
-		*(inBuffer + i) = static_cast<int16_t>((*(inBuffer + i)) * gain);
+		inBuffer[i] = (float) inBuffer[i] * gain;
 	}
 }
 
