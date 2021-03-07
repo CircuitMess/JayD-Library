@@ -115,7 +115,7 @@ void SourceWAV::open(fs::File *_file){
 	if(file != nullptr) delete file;
 	
 	file = _file;
-	channels, sampleRate, bitsPerSample = 0;
+	channels = sampleRate = bytesPerSample = 0;
 }
 
 int SourceWAV::available(){
