@@ -35,6 +35,17 @@ SourceWAV::~SourceWAV(){
 }
 
 bool SourceWAV::readHeader(){
+	if(file == nullptr){
+		Serial.println("file nullptr");
+		return false;
+	}
+	if(!*file){
+		Serial.println("file false");
+		return false;
+	}
+
+	file->seek(0);
+
 	char *buffer = (char*)malloc(sizeof(wavHeader));
 	if(file->readBytes(buffer, sizeof(wavHeader)) != sizeof(wavHeader)){
 		Serial.println("Error, couldn't read from file");
