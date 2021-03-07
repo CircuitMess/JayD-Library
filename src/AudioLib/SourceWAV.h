@@ -27,6 +27,8 @@ private:
 	size_t readData;
 	bool readHeader();
 
+	uint8_t* fileBuffer = nullptr;
+	uint8_t fbPtr = 0;
 };
 
 

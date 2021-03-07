@@ -1,6 +1,9 @@
 #include "SourceWAV.h"
 #include "../AudioSetup.hpp"
 
+// Number of system buffers to load at once
+#define BUFFER_COUNT 2
+
 //-------------------------------------------
 // Helper structs and funcs
 struct wavHeader{
@@ -22,8 +25,13 @@ struct wavHeader{
 // ----------------------------------------------
 
 
-SourceWAV::SourceWAV() : file(nullptr), channels(0), sampleRate(0),
-		bitsPerSample(0), dataSize(0), readData(0){
+SourceWAV::SourceWAV() : file(nullptr), dataSize(0), readData(0){
+
+	return;
+	fileBuffer = static_cast<uint8_t*>(malloc(BUFFER_COUNT * BUFFER_SIZE));
+	if(fileBuffer == nullptr){
+		Serial.println("File buffer malloc error");
+	}
 }
 
 SourceWAV::SourceWAV(fs::File *_file) : SourceWAV(){
@@ -32,6 +40,7 @@ SourceWAV::SourceWAV(fs::File *_file) : SourceWAV(){
 }
 
 SourceWAV::~SourceWAV(){
+	free(fileBuffer);
 }
 
 bool SourceWAV::readHeader(){
@@ -94,21 +103,27 @@ size_t SourceWAV::generate(int16_t *outBuffer){
 	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0){
 		if(!readHeader()) return 0;
 	}
-	int readBytes = file->read((uint8_t*)outBuffer, BUFFER_SIZE);
-	readData+=readBytes;
-	return (readBytes / ((int)(bitsPerSample/8)*channels));
-}
 
-int SourceWAV::getBitsPerSample(){
-	return bitsPerSample;
-}
 
-int SourceWAV::getSampleRate(){
-	return sampleRate;
-}
+	if(fileBuffer == nullptr){
+		int readBytes = file->read((uint8_t*)outBuffer, BUFFER_SIZE);
+		readData+=readBytes;
+		return readBytes / (BYTES_PER_SAMPLE * NUM_CHANNELS);
+	}
 
-int SourceWAV::getChannels(){
-	return channels;
+	if(fbPtr == 0){
+		file->read(fileBuffer, BUFFER_COUNT * BUFFER_SIZE);
+	}
+
+	memcpy(outBuffer, fileBuffer + fbPtr * BUFFER_SIZE, BUFFER_SIZE);
+
+	fbPtr++;
+	if(fbPtr == BUFFER_COUNT){
+		fbPtr = 0;
+	}
+
+	readData += BUFFER_SIZE;
+	return BUFFER_SIZE;
 }
 
 void SourceWAV::open(fs::File *_file){
