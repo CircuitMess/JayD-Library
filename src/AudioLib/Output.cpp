@@ -24,6 +24,7 @@ void Output::setSource(Generator* generator){
 	this->generator = generator;
 }
 
+#define microsPerBuffer ((float) BUFFER_SAMPLES * (1000000.0f / (float) SAMPLE_RATE))
 void Output::loop(uint _time){
 	if(generator == nullptr) return;
 	if(!running) return;
@@ -31,9 +32,9 @@ void Output::loop(uint _time){
 	if(timed){
 		// TODO: check timings
 		uint32_t m = micros();
-		if(m - lastSample <= 0.99f * (float) BUFFER_SAMPLES * (1000000.0f / (float) SAMPLE_RATE)) return;
+		if(m - lastSample <= 0.995f * microsPerBuffer) return;
 		output(receivedSamples);
-		lastSample += (float) BUFFER_SAMPLES * (1000000.0f / (float) SAMPLE_RATE);
+		lastSample += microsPerBuffer;
 	}else{
 		output(receivedSamples);
 	}
