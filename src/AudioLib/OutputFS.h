@@ -3,7 +3,7 @@
 
 #include "Output.h"
 #include <FS.h>
-
+#include <aacenc_lib.h>
 
 class OutputFS : public Output
 {
@@ -23,7 +23,13 @@ private:
 	size_t recordingNum;
 	size_t dataLength;
 
-	void writeHeader(size_t size);
+	void writeHeaderWAV(size_t size);
+
+	AACENC_BufDesc inBufDesc;
+	AACENC_BufDesc outBufDesc;
+	HANDLE_AACENCODER encoder;
+	AACENC_InArgs inArgs;
+	void setupBuffers();
 };
 
 

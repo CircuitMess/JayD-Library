@@ -1,6 +1,8 @@
 #include "OutputFS.h"
 #include <string>
 #include "../AudioSetup.hpp"
+#include "../PerfMon.h"
+
 struct wavHeader{
 	char RIFF[4];
 	uint32_t chunkSize;
@@ -28,9 +30,53 @@ OutputFS::~OutputFS(){
 	}
 }
 
+void* outputBuffer = nullptr; // The output buffer size should be 6144 bits per channel excluding the LFE channel.
+
+static void* inBuffer[] = { inBuffer };
+static INT inBufferIds[] = { IN_AUDIO_DATA };
+static INT inBufferSize[] = { BUFFER_SAMPLES * NUM_CHANNELS };
+static INT inBufferElSize[] = { BYTES_PER_SAMPLE };
+
+static void* outBuffer[] = { outputBuffer };
+static INT outBufferIds[] = { OUT_BITSTREAM_DATA };
+static INT outBufferSize[] = { sizeof(outputBuffer) };
+static INT outBufferElSize[] = { sizeof(UCHAR) };
+
+void OutputFS::setupBuffers(){
+	inBufDesc.numBufs = sizeof(::inBuffer) / sizeof(void*);
+	inBufDesc.bufs = (void**) &::inBuffer;
+	inBufDesc.bufferIdentifiers = inBufferIds;
+	inBufDesc.bufSizes = inBufferSize;
+	inBufDesc.bufElSizes = inBufferElSize;
+
+	outBufDesc.numBufs = sizeof(outBuffer) / sizeof(void*);
+	outBufDesc.bufs = (void**) &outBuffer;
+	outBufDesc.bufferIdentifiers = outBufferIds;
+	outBufDesc.bufSizes = outBufferSize;
+	outBufDesc.bufElSizes = outBufferElSize;
+
+	inArgs = {
+			.numInSamples = BUFFER_SAMPLES,
+			.numAncBytes = 0
+	};
+}
+
 void OutputFS::output(size_t numSamples){
-	file->write((uint8_t*)inBuffer, numSamples*NUM_CHANNELS*BYTES_PER_SAMPLE);
-	dataLength+=numSamples*NUM_CHANNELS*BYTES_PER_SAMPLE;
+	Profiler.start("AAC encode");
+	::inBuffer[0] = this->inBuffer;
+	inArgs.numInSamples = numSamples * NUM_CHANNELS;
+	AACENC_OutArgs outArgs;
+	int status = aacEncEncode(encoder, &inBufDesc, &outBufDesc, &inArgs, &outArgs);
+	if(status != AACENC_OK){
+		Serial.printf("ENC: %x\n", status);
+	}
+	Profiler.end();
+
+	if(outArgs.numOutBytes != 0){
+		Profiler.start("AAC write");
+		file->write(static_cast<uint8_t*>(outputBuffer), outArgs.numOutBytes);
+		Profiler.end();
+	}
 }
 
 void OutputFS::start(){
@@ -40,17 +86,66 @@ void OutputFS::start(){
 		Serial.println("Couldn't open file for output");
 		return;
 	}
-	writeHeader(0); // for good measure
-	file->seek(sizeof(wavHeader));
+
+	Serial.println("open");
+	if(aacEncOpen(&encoder, 0x01, 1) != AACENC_OK){
+		Serial.println("encoder create error");
+		return;
+	}
+
+	if(aacEncoder_SetParam(encoder, AACENC_AOT, 2) != AACENC_OK) Serial.println("1 err");
+	if(aacEncoder_SetParam(encoder, AACENC_SAMPLERATE, SAMPLE_RATE) != AACENC_OK) Serial.println("2 err");
+	if(aacEncoder_SetParam(encoder, AACENC_CHANNELMODE, MODE_1) != AACENC_OK) Serial.println("4 err");
+	if(aacEncoder_SetParam(encoder, AACENC_BITRATE,  128000) != AACENC_OK) Serial.println("3 err"); // 140000
+
+	if(aacEncoder_SetParam(encoder, AACENC_TRANSMUX,  2) != AACENC_OK) Serial.println("5 err");
+	if(aacEncoder_SetParam(encoder, AACENC_SIGNALING_MODE,  0) != AACENC_OK) Serial.println("6 err");
+	if(aacEncoder_SetParam(encoder, AACENC_AFTERBURNER,  0) != AACENC_OK) Serial.println("7 err");
+
+	if(aacEncEncode(encoder, nullptr, nullptr, nullptr, nullptr) != AACENC_OK){
+		Serial.println("encoder first run error");
+		return;
+	}
+
+	AACENC_InfoStruct info = {0};
+	if(aacEncInfo(encoder, &info) != AACENC_OK) {
+		Serial.println("encoder info error");
+		return;
+	}
+
+	size_t outSize = max(8192, NUM_CHANNELS * 768);
+
+	Serial.printf("FRAME LENGTH: %ld\n", outSize);
+	free(outputBuffer);
+	outputBuffer = malloc(outSize);
+	outBuffer[0] = outputBuffer;
+	outBufferSize[0] = outSize;
+
+	setupBuffers();
+	file->seek(0);
 }
 
 void OutputFS::stop(){
-	writeHeader(dataLength);
+	inArgs.numInSamples = -1;
+	AACENC_OutArgs outArgs;
+	int status = aacEncEncode(encoder, nullptr, &outBufDesc, &inArgs, &outArgs);
+	if(status != AACENC_OK){
+		Serial.printf("ENC flush: %d\n", status);
+	}
+
+	if(outArgs.numOutBytes != 0){
+		Profiler.start("AAC write");
+		file->write(static_cast<uint8_t*>(outputBuffer), outArgs.numOutBytes);
+		Profiler.end();
+	}
+
+	aacEncClose(&encoder);
+
 	file->close();
 	recordingNum++;
 }
 
-void OutputFS::writeHeader(size_t size){
+void OutputFS::writeHeaderWAV(size_t size){
 	wavHeader header;
 	memcpy(header.RIFF, "RIFF", 4);
 	header.chunkSize = size + 36;
