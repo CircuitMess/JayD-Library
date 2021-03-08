@@ -1,5 +1,6 @@
 #include "SourceWAV.h"
 #include "../AudioSetup.hpp"
+#include "../PerfMon.h"
 
 // Number of system buffers to load at once
 #define BUFFER_COUNT 2
@@ -26,11 +27,11 @@ struct wavHeader{
 
 
 SourceWAV::SourceWAV() : file(nullptr), dataSize(0), readData(0){
-
-	return;
-	fileBuffer = static_cast<uint8_t*>(malloc(BUFFER_COUNT * BUFFER_SIZE));
-	if(fileBuffer == nullptr){
-		Serial.println("File buffer malloc error");
+	if(BUFFER_COUNT != 0){
+		fileBuffer = static_cast<uint8_t*>(malloc(BUFFER_COUNT * BUFFER_SIZE));
+		if(fileBuffer == nullptr){
+			Serial.println("File buffer malloc error");
+		}
 	}
 }
 
@@ -106,13 +107,18 @@ size_t SourceWAV::generate(int16_t *outBuffer){
 
 
 	if(fileBuffer == nullptr){
+		Profiler.start("WAV read");
 		int readBytes = file->read((uint8_t*)outBuffer, BUFFER_SIZE);
+		Profiler.end();
+
 		readData+=readBytes;
 		return readBytes / (BYTES_PER_SAMPLE * NUM_CHANNELS);
 	}
 
 	if(fbPtr == 0){
+		Profiler.start("WAV read");
 		file->read(fileBuffer, BUFFER_COUNT * BUFFER_SIZE);
+		Profiler.end();
 	}
 
 	memcpy(outBuffer, fileBuffer + fbPtr * BUFFER_SIZE, BUFFER_SIZE);
@@ -123,7 +129,7 @@ size_t SourceWAV::generate(int16_t *outBuffer){
 	}
 
 	readData += BUFFER_SIZE;
-	return BUFFER_SIZE;
+	return BUFFER_SAMPLES;
 }
 
 void SourceWAV::open(fs::File *_file){
