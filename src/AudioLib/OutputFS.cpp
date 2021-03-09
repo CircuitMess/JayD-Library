@@ -20,7 +20,7 @@ struct wavHeader{
 };
 
 OutputFS::OutputFS(const char* path, fs::FS* filesystem) :
-		Output::Output(), path(path), filesystem(filesystem), recordingNum(0){
+		Output::Output(), path(path), filesystem(filesystem){
 }
 
 OutputFS::~OutputFS(){
@@ -142,7 +142,6 @@ void OutputFS::stop(){
 	aacEncClose(&encoder);
 
 	file->close();
-	recordingNum++;
 }
 
 void OutputFS::writeHeaderWAV(size_t size){

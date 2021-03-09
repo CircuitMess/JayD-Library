@@ -20,11 +20,11 @@ public:
 
 protected:
 	virtual void output(size_t numSamples) = 0;
-	int16_t *inBuffer;
+	int16_t *inBuffer = nullptr;
 
 private:
-	float gain; //0 - 1.0
-	bool running;
+	float gain = 1.0; //0 - 1.0
+	bool running = false;
 	uint32_t lastSample = 0;
 	size_t receivedSamples = 0;
 	bool timed = false;

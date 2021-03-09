@@ -21,10 +21,10 @@ public:
 	void open(fs::File *file);
 
 private:
-	fs::File *file;
+	fs::File *file = nullptr;
 
-	size_t dataSize;
-	size_t readData;
+	size_t dataSize = 0;
+	size_t readData = 0;
 	bool readHeader();
 
 	uint8_t* fileBuffer = nullptr;

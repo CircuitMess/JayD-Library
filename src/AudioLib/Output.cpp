@@ -4,10 +4,7 @@
 #include "../AudioSetup.hpp"
 
 Output::Output(bool timed) :
-		inBuffer(nullptr),
-		gain(1.0),
 		generator(nullptr),
-		running(false),
 		timed(timed){
 
 	inBuffer = (int16_t*)calloc(BUFFER_SIZE, sizeof(byte));

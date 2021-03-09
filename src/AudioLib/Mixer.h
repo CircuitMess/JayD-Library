@@ -20,7 +20,7 @@ public:
 private:
 	std::vector<Source*> sourceList;
 	std::vector<int16_t*> bufferList;
-	uint8_t mixRatio; //half-half by default, 0 = only first track, 255 = only second track
+	uint8_t mixRatio = 122; //half-half by default, 0 = only first track, 255 = only second track
 };
 
 

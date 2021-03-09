@@ -26,7 +26,7 @@ struct wavHeader{
 // ----------------------------------------------
 
 
-SourceWAV::SourceWAV() : file(nullptr), dataSize(0), readData(0){
+SourceWAV::SourceWAV(){
 	if(BUFFER_COUNT != 0){
 		fileBuffer = static_cast<uint8_t*>(malloc(BUFFER_COUNT * BUFFER_SIZE));
 		if(fileBuffer == nullptr){

@@ -17,7 +17,7 @@ public:
 	void open(fs::File *file);
 
 private:
-	fs::File *file;
+	fs::File *file = nullptr;
 
 };
 

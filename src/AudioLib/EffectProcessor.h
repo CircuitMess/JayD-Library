@@ -20,7 +20,7 @@ public:
 
 private:
 	std::vector<Effect*> effectList;
-	int16_t *effectBuffer;
+	int16_t *effectBuffer = nullptr;
 	Generator* inputGenerator;
 };
 #endif

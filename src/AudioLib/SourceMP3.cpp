@@ -1,6 +1,6 @@
 #include "SourceMP3.h"
 
-SourceMP3::SourceMP3() : file(nullptr){
+SourceMP3::SourceMP3(){
 }
 
 SourceMP3::SourceMP3(fs::File *_file) : SourceMP3(){

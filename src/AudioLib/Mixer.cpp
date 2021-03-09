@@ -10,7 +10,7 @@ int16_t clip(int32_t input){
 }
 
 
-Mixer::Mixer() : mixRatio(122)
+Mixer::Mixer()
 {
 }
 

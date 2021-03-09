@@ -20,7 +20,6 @@ private:
 	const char* path;
 	fs::FS* filesystem;
 	fs::File* file;
-	size_t recordingNum;
 	size_t dataLength;
 
 	void writeHeaderWAV(size_t size);
