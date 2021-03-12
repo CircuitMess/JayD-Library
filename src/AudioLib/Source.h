@@ -15,6 +15,8 @@ public:
 	virtual uint16_t getElapsed() = 0;
 	virtual void seek(uint16_t time, fs::SeekMode mode) = 0;
 
+	virtual void close() = 0;
+
 protected:
 	uint8_t channels = 0;
 	uint32_t sampleRate = 0;
