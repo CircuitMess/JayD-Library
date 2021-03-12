@@ -3,11 +3,8 @@
 
 #include "Generator.h"
 #include "Source.h"
-#include "r8brain-free-src/r8bbase.h"
-#include "r8brain-free-src/CDSPResampler.h"
 
-class Converter : public Generator
-{
+class Converter : public Generator {
 public:
 	Converter(Source* source);
 	~Converter();
@@ -15,12 +12,8 @@ public:
 
 private:
 	Source* source;
-	int16_t* conversionBuffer;
 
-	r8b::CFixedBuffer< double > InBufs[2]; //max 2 channels in audio files
-	r8b::CPtrKeeper< r8b::CDSPResampler24* > Resamps[2];
 };
-
 
 
 #endif
