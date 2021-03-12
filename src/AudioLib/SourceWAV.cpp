@@ -3,7 +3,7 @@
 #include "../PerfMon.h"
 
 // Number of system buffers to load at once
-#define BUFFER_COUNT 2
+#define BUFFER_COUNT 4
 
 //-------------------------------------------
 // Helper structs and funcs
@@ -32,32 +32,49 @@ SourceWAV::SourceWAV(){
 		if(fileBuffer == nullptr){
 			Serial.println("File buffer malloc error");
 		}
+	}else{
+		fileBuffer = static_cast<uint8_t*>(malloc(BUFFER_SIZE));
 	}
 }
 
-SourceWAV::SourceWAV(fs::File *_file) : SourceWAV(){
-	file = _file;
+SourceWAV::SourceWAV(fs::File file) : SourceWAV(){
+	open(file);
+}
+
+void SourceWAV::open(fs::File file){
+	this->file = file;
+	channels = sampleRate = bytesPerSample = 0;
 	readHeader();
+	addReadJob();
 }
 
 SourceWAV::~SourceWAV(){
 	free(fileBuffer);
 }
 
+void SourceWAV::addReadJob(){
+	delete readResult;
+	readResult = nullptr;
+
+	Sched.addJob({
+			 .type = SDJob::SD_READ,
+			 .file = file,
+			 .size = BUFFER_COUNT == 0 ? BUFFER_SIZE : BUFFER_SIZE * BUFFER_COUNT,
+			 .buffer = fileBuffer,
+			 .result = &readResult
+	 });
+}
+
 bool SourceWAV::readHeader(){
-	if(file == nullptr){
-		Serial.println("file nullptr");
-		return false;
-	}
-	if(!*file){
+	if(!file){
 		Serial.println("file false");
 		return false;
 	}
 
-	file->seek(0);
+	file.seek(0);
 
 	char *buffer = (char*)malloc(sizeof(wavHeader));
-	if(file->readBytes(buffer, sizeof(wavHeader)) != sizeof(wavHeader)){
+	if(file.readBytes(buffer, sizeof(wavHeader)) != sizeof(wavHeader)){
 		Serial.println("Error, couldn't read from file");
 		free(buffer);
 		return false;
@@ -92,10 +109,6 @@ bool SourceWAV::readHeader(){
 }
 
 size_t SourceWAV::generate(int16_t *outBuffer){
-	if(file == nullptr){
-		Serial.println("file nullptr");
-		return 0;
-	}
 	if(!file){
 		Serial.println("file false");
 		return 0;
@@ -105,26 +118,26 @@ size_t SourceWAV::generate(int16_t *outBuffer){
 		if(!readHeader()) return 0;
 	}
 
-
-	if(fileBuffer == nullptr){
-		Profiler.start("WAV read");
-		int readBytes = file->read((uint8_t*)outBuffer, BUFFER_SIZE);
+	if(readResult == nullptr){
+		Profiler.start("WAV read wait");
+		while(readResult == nullptr){
+			delayMicroseconds(1);
+		}
 		Profiler.end();
-
-		readData+=readBytes;
-		return readBytes / (BYTES_PER_SAMPLE * NUM_CHANNELS);
 	}
 
-	if(fbPtr == 0){
-		Profiler.start("WAV read");
-		file->read(fileBuffer, BUFFER_COUNT * BUFFER_SIZE);
-		Profiler.end();
+	if(BUFFER_COUNT == 0){
+		memcpy(outBuffer, readResult->buffer, readResult->size);
+		readData+=readResult->size;
+		size_t readBuffers = readResult->size / (BYTES_PER_SAMPLE * NUM_CHANNELS);
+		addReadJob();
+		return readBuffers;
 	}
 
 	memcpy(outBuffer, fileBuffer + fbPtr * BUFFER_SIZE, BUFFER_SIZE);
-
 	fbPtr++;
 	if(fbPtr == BUFFER_COUNT){
+		addReadJob();
 		fbPtr = 0;
 	}
 
@@ -132,16 +145,9 @@ size_t SourceWAV::generate(int16_t *outBuffer){
 	return BUFFER_SAMPLES;
 }
 
-void SourceWAV::open(fs::File *_file){
-	if(file != nullptr) delete file;
-	
-	file = _file;
-	channels = sampleRate = bytesPerSample = 0;
-}
-
 int SourceWAV::available(){
 	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0) return 0;
-	return (file->available()/(channels*bytesPerSample));
+	return (file.available()/(channels*bytesPerSample));
 }
 
 uint16_t SourceWAV::getDuration(){
@@ -157,7 +163,11 @@ uint16_t SourceWAV::getElapsed(){
 void SourceWAV::seek(uint16_t time, fs::SeekMode mode){
 	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0 ) return;
 	size_t offset = time*sampleRate*channels*bytesPerSample;
-	if(offset >= file->size()) return;
+	if(offset >= file.size()) return;
 
-	file->seek(offset, mode);
+	file.seek(offset, mode);
+}
+
+void SourceWAV::close(){
+
 }

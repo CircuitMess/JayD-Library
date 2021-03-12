@@ -4,12 +4,13 @@
 #include <Arduino.h>
 #include <FS.h>
 #include "Source.h"
+#include "../Services/SDScheduler.h"
 
 class SourceWAV : public Source
 {
 public:
 	SourceWAV();
-	SourceWAV(fs::File *file);
+	SourceWAV(fs::File file);
 	~SourceWAV();
 	size_t generate(int16_t* outBuffer) override;
 	int available() override;
@@ -18,17 +19,22 @@ public:
 	uint16_t getElapsed() override;
 	void seek(uint16_t time, fs::SeekMode mode) override;
 
-	void open(fs::File *file);
+	void open(fs::File file);
+
+	void close() override;
 
 private:
-	fs::File *file = nullptr;
+	fs::File file;
 
-	size_t dataSize = 0;
-	size_t readData = 0;
+	size_t dataSize;
+	size_t readData;
 	bool readHeader();
 
 	uint8_t* fileBuffer = nullptr;
 	uint8_t fbPtr = 0;
+
+	SDResult* readResult = nullptr;
+	void addReadJob();
 };
 
 
