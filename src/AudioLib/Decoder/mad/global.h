@@ -22,8 +22,6 @@
 # ifndef LIBMAD_GLOBAL_H
 # define LIBMAD_GLOBAL_H
 
-// #include "esp_common.h"
-#include "config.h"
 /* conditional debugging */
 
 # if defined(DEBUG) && defined(NDEBUG)
@@ -50,14 +48,11 @@
 # endif
 
 # if !defined(HAVE_ASSERT_H)
-//#  if defined(NDEBUG)
+#  if defined(NDEBUG)
 #   define assert(x)	/* nothing */
-//#  else
-//#   define assert(x)	do { if (!(x)) abort(); } while (0)
-//#  endif
+#  else
+#   define assert(x)	do { if (!(x)) abort(); } while (0)
+#  endif
 # endif
-
-void render_sample_block(short *short_sample_buff, int no_samples);
-void set_dac_sample_rate(int rate);
 
 # endif

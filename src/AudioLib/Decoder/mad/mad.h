@@ -29,7 +29,6 @@ extern "C" {
 # define SIZEOF_LONG 4
 # define SIZEOF_LONG_LONG 8
 
-#include "config.h"
 
 /* Id: version.h,v 1.26 2004/01/23 09:41:33 rob Exp */
 
@@ -691,7 +690,6 @@ enum mad_error {
 };
 
 # define MAD_RECOVERABLE(error)	((error) & 0xff00)
-typedef unsigned char main_data_t[MAD_BUFFER_MDLEN];
 
 struct mad_stream {
   unsigned char const *buffer;		/* input bitstream buffer */
@@ -708,9 +706,7 @@ struct mad_stream {
   struct mad_bitptr anc_ptr;		/* ancillary bits pointer */
   unsigned int anc_bitlen;		/* number of ancillary bits */
 
-  // unsigned char (*main_data)[MAD_BUFFER_MDLEN];
-  main_data_t *main_data;
-
+  unsigned char (*main_data)[MAD_BUFFER_MDLEN];
 					/* Layer III main_data() */
   unsigned int md_len;			/* bytes in main_data */
 
@@ -851,6 +847,7 @@ struct mad_pcm {
   unsigned int samplerate;		/* sampling frequency (Hz) */
   unsigned short channels;		/* number of channels */
   unsigned short length;		/* number of samples per channel */
+  int16_t samples[2][32];//1152];		/* PCM output samples [ch][sample] */
 };
 
 struct mad_synth {
@@ -883,9 +880,18 @@ void mad_synth_init(struct mad_synth *);
 
 # define mad_synth_finish(synth)  /* nothing */
 
+
+enum mad_flow {
+  MAD_FLOW_CONTINUE = 0x0000,  /* continue normally */
+  MAD_FLOW_STOP     = 0x0010, /* stop decoding normally */
+  MAD_FLOW_BREAK    = 0x0011, /* stop decoding and signal an error */
+  MAD_FLOW_IGNORE   = 0x0020  /* ignore the current frame */
+};
+
+
 void mad_synth_mute(struct mad_synth *);
 
-void mad_synth_frame(struct mad_synth *, struct mad_frame const *);
+enum mad_flow mad_synth_frame(struct mad_synth *, struct mad_frame const *, enum mad_flow (*output_func)(void *s, struct mad_header const *, struct mad_pcm *), void *cbdata );
 
 # endif
 
@@ -900,18 +906,6 @@ enum mad_decoder_mode {
   MAD_DECODER_MODE_ASYNC
 };
 
-enum mad_flow {
-  MAD_FLOW_CONTINUE = 0x0000,	/* continue normally */
-  MAD_FLOW_STOP     = 0x0010,	/* stop decoding normally */
-  MAD_FLOW_BREAK    = 0x0011,	/* stop decoding and signal an error */
-  MAD_FLOW_IGNORE   = 0x0020	/* ignore the current frame */
-};
-
-struct t_sync {
-  struct mad_stream stream;
-  struct mad_frame frame;
-  struct mad_synth synth;
-};
 
 struct mad_decoder {
   enum mad_decoder_mode mode;
@@ -924,7 +918,11 @@ struct mad_decoder {
     int out;
   } async;
 
-  struct t_sync *sync;
+  struct {
+    struct mad_stream stream;
+    struct mad_frame frame;
+    struct mad_synth synth;
+  } *sync;
 
   void *cb_data;
 

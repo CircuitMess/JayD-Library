@@ -19,9 +19,7 @@
  * $Id: timer.c,v 1.18 2004/01/23 09:41:33 rob Exp $
  */
 
-# ifdef HAVE_CONFIG_H
 #  include "config.h"
-# endif
 
 # include "global.h"
 
@@ -124,7 +122,7 @@ void reduce_rational(unsigned long *numer, unsigned long *denom)
 
   factor = gcd(*numer, *denom);
 
-  //assert(factor != 0);
+  assert(factor != 0);
 
   *numer /= factor;
   *denom /= factor;
@@ -141,7 +139,7 @@ unsigned long scale_rational(unsigned long numer, unsigned long denom,
   reduce_rational(&numer, &denom);
   reduce_rational(&scale, &denom);
 
-  //assert(denom != 0);
+  assert(denom != 0);
 
   if (denom < scale)
     return numer * (scale / denom) + numer * (scale % denom) / denom;

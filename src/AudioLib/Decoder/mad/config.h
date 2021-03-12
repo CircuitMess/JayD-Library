@@ -4,11 +4,79 @@
 /* Define to enable diagnostic debugging support. */
 /* #undef DEBUG */
 
+// Uncomment to show heap and stack space on entry
+#define stack(a,b,c)
+
 /* Define to enable experimental code. */
 /* #undef EXPERIMENTAL */
 
+/* Define to 1 if you have the <assert.h> header file. */
+#define HAVE_ASSERT_H 1
+
+/* Define to 1 if you have the <dlfcn.h> header file. */
+#undef HAVE_DLFCN_H
+
+/* Define to 1 if you have the <errno.h> header file. */
+#undef HAVE_ERRNO_H
+
+/* Define to 1 if you have the `fcntl' function. */
+#undef HAVE_FCNTL
+
+/* Define to 1 if you have the <fcntl.h> header file. */
+#undef HAVE_FCNTL_H
+
+/* Define to 1 if you have the `fork' function. */
+#undef HAVE_FORK
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the <limits.h> header file. */
+#undef HAVE_LIMITS_H
+
+/* Define if your MIPS CPU supports a 2-operand MADD16 instruction. */
+/* #undef HAVE_MADD16_ASM */
+
+#define FPM_DEFAULT
+
+/* Define if your MIPS CPU supports a 2-operand MADD instruction. */
+#define HAVE_MADD_ASM 1
+
+/* Define to 1 if you have the <memory.h> header file. */
+#undef HAVE_MEMORY_H
+
+/* Define to 1 if you have the `pipe' function. */
+#undef HAVE_PIPE
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#define HAVE_STDINT_H 1
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the <strings.h> header file. */
+#undef HAVE_STRINGS_H
+
+/* Define to 1 if you have the <string.h> header file. */
+#undef HAVE_STRING_H
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have <sys/wait.h> that is POSIX.1 compatible. */
+#undef HAVE_SYS_WAIT_H
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#undef HAVE_UNISTD_H
+
+/* Define to 1 if you have the `waitpid' function. */
+#undef HAVE_WAITPID
+
 /* Define to disable debugging assertions. */
-#define NDEBUG
+/* #undef NDEBUG */
 
 /* Define to optimize for accuracy over speed. */
 /* #undef OPT_ACCURACY */
@@ -17,7 +85,7 @@
 #define OPT_SPEED 1
 
 /* Define to enable a fast subband synthesis approximation optimization. */
-#define OPT_SSO
+#define OPT_SSO 1
 
 /* Define to influence a strict interpretation of the ISO/IEC standards, even
    if this is in opposition with best accepted practices. */
@@ -54,11 +122,11 @@
 #undef STDC_HEADERS
 
 /* Version number of package */
-#define VERSION "0.15.1b"
+#define VERSION "0.15.1b-esp8266"
 
 /* Define to 1 if your processor stores words with the most significant byte
    first (like Motorola and SPARC, unlike Intel and VAX). */
-/* #undef WORDS_BIGENDIAN */
+#undef WORDS_BIGENDIAN
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */
@@ -68,8 +136,6 @@
 #ifndef __cplusplus
 /* #undef inline */
 #endif
-
-#define FPM_DEFAULT
 
 /* Define to `int' if <sys/types.h> does not define. */
 /* #undef pid_t */
