@@ -2,7 +2,7 @@
 #include "PerfMon.h"
 
 PerfMon Profiler;
-#define PROFILER_DEBUG
+// #define PROFILER_DEBUG
 
 void PerfMon::init(){
 #ifndef PROFILER_DEBUG
