@@ -42,10 +42,10 @@ include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/tools/sdk/incl
 
 include_directories(${ArduinoLibs}/TFT_eSPI)
 include_directories(${ArduinoLibs}/TFT_eSPI/Extensions)
-
 include_directories(${ArduinoLibs}/FDK-AAC/src)
 
 AUX_SOURCE_DIRECTORY(src SOURCES)
+AUX_SOURCE_DIRECTORY(src/Input SOURCES)
 AUX_SOURCE_DIRECTORY(src/AudioLib SOURCES)
 AUX_SOURCE_DIRECTORY(src/AudioLib/Decoder SOURCES)
 AUX_SOURCE_DIRECTORY(src/AudioLib/Decoder/mad SOURCES)
@@ -71,4 +71,4 @@ add_custom_target(CMUpload ALL
         DEPENDS CMBuild
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-add_executable(${CMAKE_PROJECT_NAME}.ino.elf ${CMAKE_PROJECT_NAME}.ino ${SOURCES})
+add_executable(${CMAKE_PROJECT_NAME}.bin ${CMAKE_PROJECT_NAME}.ino ${SOURCES})
