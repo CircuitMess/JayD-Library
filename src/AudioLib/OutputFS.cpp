@@ -2,6 +2,8 @@
 #include <string>
 #include "../AudioSetup.hpp"
 #include "../PerfMon.h"
+#include "../Services/SDScheduler.h"
+
 
 struct wavHeader{
 	char RIFF[4];
@@ -61,6 +63,11 @@ void OutputFS::setupBuffers(){
 	};
 }
 
+#define WB_COUNT 4
+uint8_t* writeBuffer = static_cast<uint8_t*>(malloc(BUFFER_SIZE * WB_COUNT));
+uint8_t* wbPtr = static_cast<uint8_t*>(writeBuffer);
+int wbi = 0;
+
 void OutputFS::output(size_t numSamples){
 	Profiler.start("AAC encode");
 	::inBuffer[0] = this->inBuffer;
@@ -73,9 +80,18 @@ void OutputFS::output(size_t numSamples){
 	Profiler.end();
 
 	if(outArgs.numOutBytes != 0){
-		Profiler.start("AAC write");
-		file->write(static_cast<uint8_t*>(outputBuffer), outArgs.numOutBytes);
-		Profiler.end();
+		memcpy(wbPtr, outputBuffer, outArgs.numOutBytes);
+		wbPtr += outArgs.numOutBytes;
+		wbi++;
+
+		if(wbi == WB_COUNT){
+			Profiler.start("AAC write");
+			addWriteJob(writeBuffer, wbPtr - writeBuffer);
+			Profiler.end();
+
+			wbi = 0;
+			wbPtr = static_cast<uint8_t*>(writeBuffer);
+		}
 	}
 }
 
@@ -87,7 +103,6 @@ void OutputFS::start(){
 		return;
 	}
 
-	Serial.println("open");
 	if(aacEncOpen(&encoder, 0x01, 1) != AACENC_OK){
 		Serial.println("encoder create error");
 		return;
@@ -135,13 +150,36 @@ void OutputFS::stop(){
 
 	if(outArgs.numOutBytes != 0){
 		Profiler.start("AAC write");
-		file->write(static_cast<uint8_t*>(outputBuffer), outArgs.numOutBytes);
+		addWriteJob(outputBuffer, outArgs.numOutBytes);
 		Profiler.end();
 	}
 
 	aacEncClose(&encoder);
 
 	file->close();
+}
+
+void OutputFS::addWriteJob(void* buffer, size_t size){
+	if(writePending && writeResult == nullptr){
+		while(writeResult == nullptr){
+			delayMicroseconds(1);
+		}
+
+		writePending = false;
+	}
+
+	delete writeResult;
+	writeResult = nullptr;
+
+	Sched.addJob({
+			 .type = SDJob::SD_WRITE,
+			 .file = *file,
+			 .size = size,
+			 .buffer = static_cast<uint8_t*>(buffer),
+			 .result = &writeResult
+	 });
+
+	writePending = true;
 }
 
 void OutputFS::writeHeaderWAV(size_t size){

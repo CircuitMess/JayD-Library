@@ -29,6 +29,10 @@ private:
 	HANDLE_AACENCODER encoder;
 	AACENC_InArgs inArgs;
 	void setupBuffers();
+
+	SDResult* writeResult = nullptr;
+	bool writePending = false;
+	void addWriteJob(void* buffer, size_t size);
 };
 
 
