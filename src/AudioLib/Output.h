@@ -21,6 +21,7 @@ public:
 protected:
 	virtual void output(size_t numSamples) = 0;
 	int16_t *inBuffer = nullptr;
+	Generator* generator;
 
 private:
 	float gain = 1.0; //0 - 1.0
