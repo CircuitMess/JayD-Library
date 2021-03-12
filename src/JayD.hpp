@@ -1,0 +1,35 @@
+#ifndef JAYD_H
+#define JAYD_H
+
+#define ENC_MID 0
+#define ENC_L1 1
+#define ENC_L2 6
+#define ENC_L3 5
+#define ENC_R1 4
+#define ENC_R2 3
+#define ENC_R3 2
+
+#define POT_L 1
+#define POT_MID 0
+#define POT_R 2
+
+#define BTN_L 0
+#define BTN_R 1
+#define BTN_MID 2
+#define BTN_L1 3
+#define BTN_L2 8
+#define BTN_L3 7
+#define BTN_R1 6
+#define BTN_R2 5
+#define BTN_R3 4
+
+#define I2S_WS 4
+#define I2S_DO 16
+#define I2S_BCK 17
+#define I2S_DI -1
+
+#include <Arduino.h>
+#include <driver/i2s.h>
+extern const i2s_pin_config_t i2s_pin_config;
+
+#endif

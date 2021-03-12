@@ -1,6 +1,0 @@
-#ifndef JAYD_AUDIOSOURCE_H
-#define JAYD_AUDIOSOURCE_H
-
-
-
-#endif
