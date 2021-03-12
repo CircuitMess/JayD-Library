@@ -4,11 +4,11 @@ but if you're compiling for a board that doesn't have them defined, you can do s
 */
 
 #ifndef BUFFER_SAMPLES
-#define BUFFER_SAMPLES 1024 //number of samples in the buffer
+#define BUFFER_SAMPLES 256 //number of samples in the buffer
 #endif
 
 #ifndef SAMPLE_RATE
-#define SAMPLE_RATE 16000
+#define SAMPLE_RATE 44100
 #endif
 
 #ifndef BYTES_PER_SAMPLE
@@ -16,7 +16,7 @@ but if you're compiling for a board that doesn't have them defined, you can do s
 #endif
 
 #ifndef NUM_CHANNELS
-#define NUM_CHANNELS 2
+#define NUM_CHANNELS 1
 #endif
 
 #ifndef BUFFER_SIZE
