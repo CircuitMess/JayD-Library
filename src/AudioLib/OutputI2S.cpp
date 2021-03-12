@@ -1,8 +1,8 @@
 #include "OutputI2S.h"
 #include "../AudioSetup.hpp"
+#include "../PerfMon.h"
 
-OutputI2S::OutputI2S(i2s_config_t config, i2s_pin_config_t pins, int _port) :
-		Output::Output(), config(config), pins(pins), port(port){
+OutputI2S::OutputI2S(i2s_config_t config, i2s_pin_config_t pins, int _port) : Output(true), config(config), pins(pins), port(port){
 }
 
 OutputI2S::~OutputI2S(){
@@ -10,7 +10,9 @@ OutputI2S::~OutputI2S(){
 
 void OutputI2S::output(size_t numSamples){
 	size_t bytesWritten;
-	i2s_write(I2S_NUM_0, inBuffer, numSamples*NUM_CHANNELS*BYTES_PER_SAMPLE, &bytesWritten, portMAX_DELAY);
+	Profiler.start("I2S write");
+	i2s_write_expand(I2S_NUM_0, inBuffer, numSamples*NUM_CHANNELS*BYTES_PER_SAMPLE, BYTES_PER_SAMPLE * 8, 32, &bytesWritten, portMAX_DELAY);
+	Profiler.end();
 }
 
 void OutputI2S::start(){
