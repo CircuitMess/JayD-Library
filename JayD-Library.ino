@@ -2,90 +2,192 @@
 #include <CircuitOS.h>
 #include "src/JayD.hpp"
 #include <Loop/LoopManager.h>
+//#include "src/Input/InputJayD.h"
+#include "src/AudioLib/SourceWAV.h"
+#include "src/AudioLib/OutputI2S.h"
+#include "src/AudioLib/Mixer.h"
+#include "src/PerfMon.h"
+#include "src/Services/SDScheduler.h"
+#include "src/AudioLib/SourceMP3.h"
 
 #include <SPI.h>
-#include <SerialFlash.h>
+#include <Devices/LEDmatrix/LEDmatrix.h>
 #include <Devices/SerialFlash/SerialFlashFileAdapter.h>
 #include <SD.h>
+#include <WiFi.h>
+#include <Util/Task.h>
 
-const i2s_config_t i2s_config = {
-	.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX), // Receive and transfer
-	.sample_rate = 16000,                         // 44.1KHz
-	.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT, // could only get it to work with 32bits
-	.channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT, // although the SEL config should be left, it seems to transmit on right
-	.communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
-	.intr_alloc_flags = 0,     // Interrupt level 1
-	.dma_buf_count = 16,                           // number of buffers
-	.dma_buf_len = 60,                              // 60 samples per buffer (8 minimum)
-	.use_apll = false
-};
+//LEDmatrixImpl LEDMatrix;
 
-// The pin config as per the setup
-const i2s_pin_config_t spencer_pin_config = {
-	.bck_io_num = 16,   // BCKL
-	.ws_io_num = 27,    // LRCL
-	.data_out_num = 4,	//speaker pin
-	.data_in_num = 32	//mic pin
-};
+int pixel = 0;
 
-// The pin config as per the setup
-const i2s_pin_config_t ringo_pin_config = {
-	.bck_io_num = 13,   // BCKL
-	.ws_io_num = 15,    // LRCL
-	.data_out_num = 22,	//speaker pin
-	.data_in_num = 33	//mic pin
-};
-
-Output* output;
-Source* source;
-void setup(){
-	Serial.begin(115200);
-
-	//RINGO TESTING
-	//-------------------------------------------
-	pinMode(32, OUTPUT);
-	digitalWrite(32, LOW);
-	pinMode(26, OUTPUT);
-	digitalWrite(26, 0);
-	pinMode(36, INPUT_PULLUP);
-	pinMode(34, INPUT_PULLUP);
-	pinMode(33, INPUT_PULLUP);
-	pinMode(39, INPUT_PULLUP);
-	pinMode(25, OUTPUT);
-	digitalWrite(25, 0);
-	while (!SD.begin(5, SPI, 8000000)){
-		Serial.println("SD ERROR");
+void lightPixel(int pixel, bool turnoff = false){
+	if(turnoff){
+		//LEDMatrix.drawPixel(::pixel, 0);
 	}
 
+	pixel = max(pixel, 0);
+	pixel = min(pixel, 16 * 9 - 1);
 
+	//LEDMatrix.drawPixel(pixel, 255);
 
-	//SPENCER TESTING
-	//-------------------------------------------
-	// SPIClass spi(3);
-	// spi.begin(18, 19, 23, 5);
-	// if(!SerialFlash.begin(spi, 5)){
-	// 	Serial.println("Flash fail");
-	// 	return;
-	// }
-	
-
-	output = new OutputI2S(i2s_config, ringo_pin_config, 0);
-	// output = new OutputFS("/output", &SD);
-	Mixer* mixer = new Mixer();
-	source = new SourceWAV(new File(SD.open("/song1.wav", "r")));
-	mixer->addSource(source);
-	// mixer->addSource(new SourceWAV(new File(SD.open("/song2.wav", "r"))));
-	// mixer->setMixRatio(255);
-	output->setSource(mixer);
-
-	// mixer->addSource(new AudioGeneratorWAV(new fs::File(fs::FileImplPtr(new SerialFlashFileAdapter("song2.wav")))));
-	// mixer->addSource(new AudioGeneratorWAV(new fs::File(fs::FileImplPtr(new SerialFlashFileAdapter("song1.wav")))));
-
-	// output->setSource(new AudioGeneratorWAV(new fs::File(fs::FileImplPtr(new SerialFlashFileAdapter("joke1.wav")))));
-	LoopManager::addListener(output);
-	output->setGain(0.2);
+	::pixel = pixel;
 }
 
+void recurseDir(File dir){
+	File f;
+	while(f = f.openNextFile()){
+		if(f.isDirectory()){
+			recurseDir(f);
+			continue;
+		}
+
+		Serial.println(f.name());
+		f.close();
+	}
+}
+
+void listSD(){
+	File root = SD.open("/");
+	if(!root){
+		Serial.println("List SD: can't open root");
+		return;
+	}
+
+	recurseDir(root);
+	root.close();
+}
+
+SourceWAV* wav1;
+SourceWAV* wav2;
+Mixer* mixer;
+
+OutputI2S* i2s;
+
+File f1, f2;
+
+void mainThread(Task* t){
+	if(!(f1 = SD.open("/Walter.wav"))){
+		Serial.println("f1 error");
+		for(;;);
+	}
+	if(!(f2 = SD.open("/Recesija.wav"))){
+		Serial.println("f2 error");
+		for(;;);
+	}
+	Serial.printf("Pre H: %d\n", ESP.getFreeHeap());
+	wav1 = new SourceWAV(f1);
+	Serial.printf("wav1 H: %d\n", ESP.getFreeHeap());
+	wav2 = new SourceWAV(f2);
+	Serial.printf("wav2 H: %d\n", ESP.getFreeHeap());
+	mixer = new Mixer();
+	Serial.printf("mixer H: %d\n", ESP.getFreeHeap());
+	mixer->addSource(wav1);
+	Serial.printf("mixer add 1 H: %d\n", ESP.getFreeHeap());
+	mixer->addSource(wav2);
+	Serial.printf("mixer add 2 H: %d\n", ESP.getFreeHeap());
+	mixer->setMixRatio(170);
+
+
+	mixer->setMixRatio(255/2);
+	i2s->setSource(mixer);
+
+	i2s->start();
+	Serial.printf("I2S start: %d\n", ESP.getFreeHeap());
+
+	for(;;){
+		if(i2s->isRunning() && millis() < 10000){
+			Profiler.init();
+			i2s->loop(0);
+			Profiler.report();
+		}else{
+			i2s->stop();
+			for(;;);
+		}
+	}
+}
+
+void setup(){
+	Serial.begin(115200);
+	WiFi.mode(WIFI_OFF);
+	btStop();
+
+	disableCore0WDT();
+	disableCore1WDT();
+
+	SPI.begin(18, 19, 23);
+	SPI.setFrequency(60000000);
+	if(!SD.begin(22, SPI)){
+		Serial.println("No SD card");
+		for(;;);
+	}
+
+	/*SPI.begin(18, 19, 23);
+	SPI.setFrequency(60000000);
+	if(!SD.begin(5, SPI)){
+		Serial.println("No SD card");
+		for(;;);
+	}*/
+
+	listSD();
+
+
+
+	i2s = new OutputI2S({
+									 .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_TX),
+									 .sample_rate = 44100,
+									 .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
+									 .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+									 .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
+									 .intr_alloc_flags = 0,
+									 .dma_buf_count = 6,
+									 .dma_buf_len = 512,
+									 .use_apll = false
+							 }, i2s_pin_config, 0);
+
+	Serial.printf("I2S: %d\n", ESP.getFreeHeap());
+	i2s->setGain(0.1);
+
+	//mainThread(nullptr);
+
+	Task* maintask = new Task("Main", mainThread, 20240);
+	maintask->start(1, 0);
+
+	for(;;){
+		Sched.loop(0);
+	}
+
+	vTaskDelete(nullptr);
+
+	/*InputJayD* input = new InputJayD();
+	input->begin();
+	LoopManager::addListener(input);
+
+	digitalWrite(JDNV_PIN_RESET, LOW);*/
+
+	/*LEDMatrix.begin(26, 27);
+	LEDMatrix.clear();
+	LEDMatrix.push();
+
+	InputJayD::getInstance()->setEncoderMovedCallback(1, [](int8_t value){
+		lightPixel(pixel + value, true);
+		LEDMatrix.push();
+
+		Serial.printf("%d\n", pixel);
+	});*/
+}
+
+int i = 0;
 void loop(){
 	LoopManager::loop();
+
+	/*i++;
+
+	LEDMatrix.clear();
+	lightPixel((i/13) % 144);
+	lightPixel((i/17) % 144);
+	lightPixel((i/5) % 144);
+	lightPixel((i/7) % 144);
+	lightPixel((i/11) % 144);
+	LEDMatrix.push();*/
 }
