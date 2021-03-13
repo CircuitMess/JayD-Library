@@ -4,6 +4,7 @@
 #include "Output.h"
 #include <FS.h>
 #include <aacenc_lib.h>
+#include "../Services/SDScheduler.h"
 
 class OutputFS : public Output
 {

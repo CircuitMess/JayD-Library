@@ -2,7 +2,6 @@
 #include <string>
 #include "../AudioSetup.hpp"
 #include "../PerfMon.h"
-#include "../Services/SDScheduler.h"
 
 
 struct wavHeader{
@@ -103,6 +102,9 @@ void OutputFS::start(){
 		return;
 	}
 
+	wbi = 0;
+	wbPtr = static_cast<uint8_t*>(writeBuffer);
+
 	if(aacEncOpen(&encoder, 0x01, 1) != AACENC_OK){
 		Serial.println("encoder create error");
 		return;
@@ -156,7 +158,11 @@ void OutputFS::stop(){
 
 	aacEncClose(&encoder);
 
+	free(outputBuffer);
+	outputBuffer = nullptr;
+
 	file->close();
+	delete file;
 }
 
 void OutputFS::addWriteJob(void* buffer, size_t size){
