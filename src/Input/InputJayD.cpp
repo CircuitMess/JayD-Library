@@ -173,8 +173,25 @@ void InputJayD::buttonHoldCheck(){
 }
 
 void InputJayD::handleEncoderEvent(uint8_t id, int8_t value){
+	uint16_t currentTime;
 	if(encMovedCallbacks[id] != nullptr){
-		encMovedCallbacks[id](value);
+		for(int i=0;i<7;i++){
+			if(i==id){
+				tempEncValue[i]+=value;
+			}
+		}
+		currentTime = millis() % 65536;
+
+		if(currentTime >= 65535){
+			previousTime = 65535 - previousTime;
+		}
+
+		if(abs(currentTime-previousTime)>=100){
+			encMovedCallbacks[id](tempEncValue[id]);
+			previousTime=currentTime;
+			tempEncValue[id]=0;
+		}
+
 	}
 }
 

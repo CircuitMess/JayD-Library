@@ -72,8 +72,8 @@ private:
 	std::vector<void (*)(int8_t)> encMovedCallbacks;
 	std::vector<void (*)(uint8_t)> potMovedCallbacks;
 
-	std::vector <uint32_t> btnHoldValue;
-	std::vector <uint32_t> btnHoldStart;
+	std::vector<uint32_t> btnHoldValue;
+	std::vector<uint32_t> btnHoldStart;
 	std::vector<bool> wasPressed;
 
 	static InputJayD *instance;
@@ -90,6 +90,9 @@ private:
 
 	void buttonHoldCheck();
 
+	int8_t tempEncValue[7] = {0};
+
+	uint16_t previousTime = 0;
 };
 
 
