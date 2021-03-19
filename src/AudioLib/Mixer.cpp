@@ -65,7 +65,7 @@ int Mixer::available(){
 	return available;
 }
 
-void Mixer::addSource(Source* generator){
+void Mixer::addSource(Generator* generator){
 	sourceList.push_back(generator);
 	bufferList.push_back((int16_t*)calloc(BUFFER_SIZE, sizeof(byte)));
 }

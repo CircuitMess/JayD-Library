@@ -13,12 +13,12 @@ public:
 	size_t generate(int16_t* outBuffer) override;
 	int available() override;
 
-	void addSource(Source* source);
+	void addSource(Generator* source);
 	uint8_t getMixRatio();
 	void setMixRatio(uint8_t ratio);
 	
 private:
-	std::vector<Source*> sourceList;
+	std::vector<Generator*> sourceList;
 	std::vector<int16_t*> bufferList;
 	uint8_t mixRatio = 122; //half-half by default, 0 = only first track, 255 = only second track
 };
