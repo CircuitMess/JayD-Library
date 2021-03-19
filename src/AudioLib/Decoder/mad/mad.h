@@ -24,6 +24,8 @@
 extern "C" {
 # endif
 
+#include "config.h"
+
 
 # define SIZEOF_INT 4
 # define SIZEOF_LONG 4
