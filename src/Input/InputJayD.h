@@ -55,6 +55,8 @@ public:
 
 	static InputJayD *getInstance();
 
+	uint8_t getPotValue(uint8_t potID);
+
 	void loop(uint _time) override;
 
 	void reset();
