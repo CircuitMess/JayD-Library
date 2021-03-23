@@ -4,16 +4,13 @@ HighPass::HighPass(){
 
 }
 
-void HighPass::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numSamples){
-
-	for(int i = 0; i < numSamples/2; ++i){
-
+void HighPass::applyEffect(int16_t *inBuffer, int16_t *outBuffer, size_t numSamples){
+	for(int i = 0; i < numSamples; ++i){
 		outBuffer[i] = signalProcessing(inBuffer[i]);
 	}
 }
 
 int16_t HighPass::signalProcessing(int16_t sample){
-
 	filter = filter2;
 	filter2 = sample;
 	sample = ((float)sample * fAmpI) + ((filter2 - filter) * fAmp)*gain;
@@ -41,7 +38,6 @@ int16_t HighPass::signalProcessing(int16_t sample){
 }
 
 void HighPass::setIntensity(uint8_t intensity){
-
 	gain = exp(intensity/255.0f) / 2.0f;
 
 	val = (float)intensity/255.0f;

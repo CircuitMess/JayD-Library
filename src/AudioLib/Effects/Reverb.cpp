@@ -18,21 +18,16 @@ int16_t Reverb::signalProcessing(int16_t sample){
 	return sample;
 }
 
-void Reverb::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numBytes){
-
-	for(int i = 0; i < numBytes/2; ++i){
-
+void Reverb::applyEffect(int16_t *inBuffer, int16_t *outBuffer, size_t numSamples){
+	for(int i = 0; i < numSamples; ++i){
 		outBuffer[i] = signalProcessing(inBuffer[i]);
 	}
-
 }
 
 void Reverb::setIntensity(uint8_t intensity){
-
 	echoAmount = (float)intensity/255.0f;
 }
 
 Reverb::~Reverb() noexcept{
-
 	free(echo);
 }

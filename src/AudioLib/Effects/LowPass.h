@@ -10,7 +10,7 @@ public:
 
 	LowPass();
 
-	void applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numSamples) override;
+	void applyEffect(int16_t *inBuffer, int16_t *outBuffer, size_t numSamples) override;
 
 	void setIntensity(uint8_t intensity) override;
 

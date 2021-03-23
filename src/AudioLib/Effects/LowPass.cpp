@@ -4,12 +4,9 @@ LowPass::LowPass(){
 
 }
 
-void LowPass::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numSamples){
-
-	for(int i = 0; i < numSamples/2; ++i){
-
+void LowPass::applyEffect(int16_t *inBuffer, int16_t *outBuffer, size_t numSamples){
+	for(int i = 0; i < numSamples; ++i){
 		outBuffer[i] = signalProcessing(inBuffer[i]);
-
 	}
 }
 
@@ -43,7 +40,6 @@ int16_t LowPass::signalProcessing(int16_t sample){
 }
 
 void LowPass::setIntensity(uint8_t intensity){
-
 	intensity *= 0.9f;
 
 	gain = exp(intensity/255.0f) / 2.0f;
