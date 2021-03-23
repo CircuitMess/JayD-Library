@@ -106,6 +106,22 @@ uint8_t InputJayD::getNumEvents(){
 	}
 }
 
+uint8_t InputJayD::getPotValue(uint8_t potID){
+	Wire.beginTransmission(JDNV_ADDR);
+	Wire.write(BYTE_GETPOTVALUE);
+	Wire.write(potID);
+	Wire.endTransmission();
+	Wire.requestFrom(JDNV_ADDR, 2);
+	if(Wire.available()){
+		Wire.read();//addr
+	}
+	if(Wire.available()){
+		uint8_t potValue = Wire.read();
+		return potValue;
+	}
+}
+
+
 void InputJayD::fetchEvents(int numEvents){
 	if(numEvents == 0) return;
 	Wire.beginTransmission(JDNV_ADDR);
