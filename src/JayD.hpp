@@ -24,9 +24,12 @@
 #define BTN_R3 4
 
 #define I2S_WS 4
-#define I2S_DO 16
-#define I2S_BCK 17
+#define I2S_DO 14
+#define I2S_BCK 21
 #define I2S_DI -1
+
+#define I2C_SDA 26
+#define I2C_SCL 27
 
 #include <Arduino.h>
 #include <driver/i2s.h>
