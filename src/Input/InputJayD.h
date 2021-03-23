@@ -11,6 +11,7 @@
 #define JDNV_ADDR 0x43
 #define BYTE_NUMEVENTS 0x12
 #define BYTE_GETEVENTS 0x13
+#define BYTE_GETPOTVALUE 0x14
 #define NUM_BTN 9
 #define NUM_ENC 7
 #define NUM_POT 3
@@ -91,6 +92,10 @@ private:
 	void handlePotentiometerEvent(uint8_t id, uint8_t value);
 
 	void buttonHoldCheck();
+
+	uint32_t currentTime = 0;
+	uint32_t encoderTime = 0;
+	int8_t tempEncValue[7] = {0};
 
 };
 
