@@ -1,26 +1,23 @@
-//
-// Created by Domagoj on 18/02/2021.
-//
+#include "LowPass.h"
 
-#include "HighPassFilter.h"
-
-HighPassFilter::HighPassFilter(){
+LowPass::LowPass(){
 
 }
 
-void HighPassFilter::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numSamples){
+void LowPass::applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numSamples){
 
 	for(int i = 0; i < numSamples/2; ++i){
 
 		outBuffer[i] = signalProcessing(inBuffer[i]);
+
 	}
 }
 
-int16_t HighPassFilter::signalProcessing(int16_t sample){
+int16_t LowPass::signalProcessing(int16_t sample){
 
-	filter = filter2;
-	filter2 = sample;
-	sample = ((float)sample * fAmpI) + ((filter2 - filter) * fAmp)*gain;
+	filter = ((float)sample * fAmpI) + (filter * fAmp);
+	filter2 = (filter * fAmpI) + (filter2 * fAmp);
+	sample = filter2*gain;
 
 	float maxAmp = pow(2,15)-1;
 	float threshold = maxAmp * 0.9;
@@ -42,14 +39,16 @@ int16_t HighPassFilter::signalProcessing(int16_t sample){
 	}
 	else
 		return (int16_t)sample;
+
 }
 
-void HighPassFilter::setIntensity(uint8_t intensity){
+void LowPass::setIntensity(uint8_t intensity){
+
+	intensity *= 0.9f;
 
 	gain = exp(intensity/255.0f) / 2.0f;
 
 	val = (float)intensity/255.0f;
 	fAmp = val;
 	fAmpI = 1 - val;
-
 }
