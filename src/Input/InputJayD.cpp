@@ -1,4 +1,5 @@
 #include "InputJayD.h"
+#include "../JayD.hpp"
 #include <Wire.h>
 #include <driver/i2s.h>
 
@@ -11,7 +12,7 @@ InputJayD::InputJayD() : btnPressCallbacks(NUM_BTN, nullptr), btnReleaseCallback
 						 btnHoldValue(NUM_BTN, 0), btnHoldStart(NUM_BTN, 0),
 						 wasPressed(NUM_BTN, false){
 
-	Wire.begin(26, 27);
+	Wire.begin(I2C_SDA, I2C_SCL);
 
 	instance = this;
 
@@ -92,6 +93,16 @@ void InputJayD::removePotMovedCallback(uint8_t id){
 	potMovedCallbacks[id] = nullptr;
 }
 
+void InputJayD::addListener(JayDInputListener* listener){
+	listeners.push_back(listener);
+}
+
+void InputJayD::removeListener(JayDInputListener* listener){
+	int index = listeners.indexOf(listener);
+	if(index == (uint) -1) return;
+	listeners.remove(index);
+}
+
 uint8_t InputJayD::getNumEvents(){
 	Wire.beginTransmission(JDNV_ADDR);
 	Wire.write(BYTE_NUMEVENTS);
@@ -165,6 +176,10 @@ void InputJayD::handleButtonEvent(uint8_t id, uint8_t value){
 		if(btnPressCallbacks[id] != nullptr){
 			btnPressCallbacks[id]();
 		}
+
+		for(auto& listener : listeners){
+			listener->buttonPress(id);
+		}
 	}
 
 	if(value == 0){
@@ -174,57 +189,76 @@ void InputJayD::handleButtonEvent(uint8_t id, uint8_t value){
 		if(btnReleaseCallbacks[id] != nullptr){
 			btnReleaseCallbacks[id]();
 		}
+
+		for(auto& listener : listeners){
+			listener->buttonRelease(id);
+		}
 	}
 }
 
 void InputJayD::buttonHoldCheck(){
 	for(uint8_t i = 0; i < btnHoldCallbacks.size(); i++){
-		if(btnHoldCallbacks[i] == nullptr) continue;
 		if(btnHoldStart[i] == 0) continue;
 		if(millis() - btnHoldStart[i] >= btnHoldValue[i] && !wasPressed[i]){
-			btnHoldCallbacks[i]();
 			wasPressed[i] = true;
+
+			if(btnHoldCallbacks[i] != nullptr){
+				btnHoldCallbacks[i]();
+			}
+
+			for(auto& listener : listeners){
+				listener->buttonHold(i);
+			}
 		}
 	}
 }
 
 void InputJayD::handleEncoderEvent(uint8_t id, int8_t value){
-	if(encMovedCallbacks[id] != nullptr){
-		if(encoderTime == 0){
-			encoderTime = currentTime;
-		}
-		tempEncValue[id] += value;
+	if(encoderTime == 0){
+		encoderTime = currentTime;
 	}
-
+	tempEncValue[id] += value;
 }
-
 
 void InputJayD::handlePotentiometerEvent(uint8_t id, uint8_t value){
 	if(potMovedCallbacks[id] != nullptr){
 		potMovedCallbacks[id](value);
 	}
+
+	for(auto& listener : listeners){
+		listener->potMove(id, value);
+	}
 }
 
 void InputJayD::loop(uint _time){
 	fetchEvents(getNumEvents());
+	buttonHoldCheck();
+
 	currentTime = millis();
 	if(currentTime - encoderTime >= 100){
 		for(int i = 0; i < 7; i++){
 			if(tempEncValue[i] != 0){
-				encMovedCallbacks[i](tempEncValue[i]);
-				tempEncValue[i] = 0;
+				if(encMovedCallbacks[i]){
+					encMovedCallbacks[i](tempEncValue[i]);
+				}
 
+				for(auto& listener : listeners){
+					listener->encoderMove(i, tempEncValue[i]);
+				}
+
+				tempEncValue[i] = 0;
 			}
 		}
 		encoderTime = currentTime;
 	}
-	buttonHoldCheck();
-
 }
 
+void JayDInputListener::buttonPress(uint8_t id){ }
 
+void JayDInputListener::buttonRelease(uint8_t id){ }
 
+void JayDInputListener::buttonHold(uint8_t id){ }
 
+void JayDInputListener::encoderMove(uint8_t id, int8_t value){ }
 
-
-
+void JayDInputListener::potMove(uint8_t id, uint8_t value){ }
