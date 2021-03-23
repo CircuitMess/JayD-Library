@@ -16,14 +16,26 @@ public:
 	size_t generate(int16_t* outBuffer) override;
 	int available() override;
 
-	void setModifier(uint16_t _modifier);
+	/**
+	 * Set speed multiplier as modifier. Will get mapped from 0-255 to 0.5 - 2.0
+	 * @param modifier
+	 */
+	void setModifier(uint8_t modifier);
+
+	/**
+	 * Set speed multiplier.
+	 * @param speed
+	 */
+	void setSpeed(float speed);
 
 private:
-
 	Source *source = nullptr;
-	DataBuffer* outBuff = nullptr;
+	DataBuffer* dataBuffer = nullptr;
 
-	uint16_t modifier;
+	float speed = 1;
+	float remainder = 0;
+
+	void fillBuffer();
 };
 
 
