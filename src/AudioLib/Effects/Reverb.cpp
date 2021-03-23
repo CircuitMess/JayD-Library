@@ -1,18 +1,17 @@
 #include "Reverb.h"
 
 Reverb::Reverb(){
-
-	echo = static_cast<int16_t *>(calloc(ECHO_LEN, sizeof(int16_t)));
+	echo = static_cast<int16_t *>(calloc(length, sizeof(int16_t)));
 }
 
 
 int16_t Reverb::signalProcessing(int16_t sample){
 
-	int16_t echoSample1 = (float)echo[(ECHO_LEN + echoCount) % (ECHO_LEN)] * echoAmount;
+	int16_t echoSample1 = (float)echo[(length + echoCount) % (length)] * echoAmount;
 
 	echo[echoCount++] = (float)sample;
 	sample+=echoSample1;
-	if (echoCount > ECHO_LEN){
+	if (echoCount > length){
 		echoCount = 0;
 	}
 

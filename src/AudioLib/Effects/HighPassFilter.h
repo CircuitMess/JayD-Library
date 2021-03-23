@@ -1,13 +1,14 @@
-#ifndef JAYD_LIBRARY_LOWPASSFILTER_H
-#define JAYD_LIBRARY_LOWPASSFILTER_H
+#ifndef JAYD_LIBRARY_HIGHPASSFILTER_H
+#define JAYD_LIBRARY_HIGHPASSFILTER_H
 
-#include "JayD.hpp"
+#include <Arduino.h>
+#include "../Effect.h"
 
-class LowPassFilter :  public AudioEffect{
+class HighPassFilter: public Effect {
 
 public:
 
-	LowPassFilter();
+	HighPassFilter();
 
 	void applyEffect(int16_t *inBuffer, int16_t *outBuffer, int numSamples) override;
 
@@ -19,14 +20,14 @@ private:
 
 	float gain = 0;
 
-	int j = 0;
-
 	float filter;
 	float filter2;
 
 	float val;
 	float fAmp;
 	float fAmpI;
+
 };
 
-#endif //JAYD_LIBRARY_LOWPASSFILTER_H
+
+#endif //JAYD_LIBRARY_HIGHPASSFILTER_H

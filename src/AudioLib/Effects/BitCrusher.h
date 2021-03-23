@@ -1,9 +1,10 @@
 #ifndef JAYD_LIBRARY_BITCRUSHER_H
 #define JAYD_LIBRARY_BITCRUSHER_H
 
-#include "JayD.hpp"
+#include <Arduino.h>
+#include "../Effect.h"
 
-class BitCrusher : public AudioEffect {
+class BitCrusher : public Effect {
 
 public:
 

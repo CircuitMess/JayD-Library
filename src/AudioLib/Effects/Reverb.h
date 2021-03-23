@@ -1,11 +1,10 @@
 #ifndef JAYD_LIBRARY_REVERB_H
 #define JAYD_LIBRARY_REVERB_H
 
-#include "JayD.hpp"
+#include <Arduino.h>
+#include "../Effect.h"
 
-#define ECHO_LEN 25000
-
-class Reverb : public AudioEffect{
+class Reverb : public Effect{
 
 public:
 
@@ -18,6 +17,7 @@ public:
 	void setIntensity(uint8_t intensity);
 
 private:
+	static const uint32_t length = 25000;
 
 	int16_t signalProcessing(int16_t sample);
 
