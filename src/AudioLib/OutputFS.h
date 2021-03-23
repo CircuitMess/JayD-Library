@@ -11,8 +11,8 @@ class OutputFS : public Output
 public:
 	OutputFS(const char* path, fs::FS* filesystem);
 	~OutputFS();
-	void start() override;
-	void stop() override;
+	void init() override;
+	void deinit() override;
 
 protected:
 	void output(size_t numBytes) override;

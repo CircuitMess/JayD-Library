@@ -50,6 +50,16 @@ void Output::loop(uint _time){
 	}
 }
 
+void Output::start(){
+	init();
+	running = true;
+}
+
+void Output::stop(){
+	deinit();
+	running = false;
+}
+
 bool Output::isRunning(){
 	return running;
 }

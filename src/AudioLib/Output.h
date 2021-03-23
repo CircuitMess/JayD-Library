@@ -12,10 +12,12 @@ public:
 	~Output();
 	void setSource(Generator* gen);
 	void loop(uint _time) override;
-	virtual void stop() = 0;
-	virtual void start() = 0;
+	void stop();
+	void start();
+
 	void setGain(float gain);
 	float getGain();
+
 	bool isRunning();
 
 protected:
@@ -23,12 +25,15 @@ protected:
 	int16_t *inBuffer = nullptr;
 	Generator* generator;
 
+	virtual void init() = 0;
+	virtual void deinit() = 0;
+
 private:
 	float gain = 1.0; //0 - 1.0
-	bool running = false;
 	uint32_t lastSample = 0;
 	size_t receivedSamples = 0;
 	bool timed = false;
+	bool running = false;
 };
 
 

@@ -94,7 +94,7 @@ void OutputFS::output(size_t numSamples){
 	}
 }
 
-void OutputFS::start(){
+void OutputFS::init(){
 	dataLength = 0;
 	file = new fs::File(filesystem->open(path, "w"));
 	if(!(*file)){
@@ -142,7 +142,7 @@ void OutputFS::start(){
 	file->seek(0);
 }
 
-void OutputFS::stop(){
+void OutputFS::deinit(){
 	inArgs.numInSamples = -1;
 	AACENC_OutArgs outArgs;
 	int status = aacEncEncode(encoder, nullptr, &outBufDesc, &inArgs, &outArgs);
