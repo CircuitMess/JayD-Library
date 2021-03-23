@@ -13,7 +13,7 @@ public:
 	~EffectProcessor();
 	size_t generate(int16_t* outBuffer) override;
 	int available() override;
-	
+
 	void addEffect(Effect* effect);
 	void removeEffect(int index);
 	Effect* getEffect(int index);
