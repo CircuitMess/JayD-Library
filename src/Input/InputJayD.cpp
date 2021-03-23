@@ -190,9 +190,14 @@ void InputJayD::buttonHoldCheck(){
 
 void InputJayD::handleEncoderEvent(uint8_t id, int8_t value){
 	if(encMovedCallbacks[id] != nullptr){
-		encMovedCallbacks[id](value);
+		if(encoderTime == 0){
+			encoderTime = currentTime;
+		}
+		tempEncValue[id] += value;
 	}
+
 }
+
 
 void InputJayD::handlePotentiometerEvent(uint8_t id, uint8_t value){
 	if(potMovedCallbacks[id] != nullptr){
@@ -202,6 +207,17 @@ void InputJayD::handlePotentiometerEvent(uint8_t id, uint8_t value){
 
 void InputJayD::loop(uint _time){
 	fetchEvents(getNumEvents());
+	currentTime = millis();
+	if(currentTime - encoderTime >= 100){
+		for(int i = 0; i < 7; i++){
+			if(tempEncValue[i] != 0){
+				encMovedCallbacks[i](tempEncValue[i]);
+				tempEncValue[i] = 0;
+
+			}
+		}
+		encoderTime = currentTime;
+	}
 	buttonHoldCheck();
 
 }
