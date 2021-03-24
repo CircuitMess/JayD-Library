@@ -1,7 +1,11 @@
 #include "Reverb.h"
 
 Reverb::Reverb(){
-	echo = static_cast<int16_t *>(calloc(length, sizeof(int16_t)));
+	if(psramFound()){
+		echo = static_cast<int16_t *>(ps_calloc(length, sizeof(int16_t)));
+	}else{
+		echo = static_cast<int16_t *>(calloc(length, sizeof(int16_t)));
+	}
 }
 
 
