@@ -7,17 +7,13 @@ EffectProcessor::EffectProcessor(Generator* generator) : inputGenerator(generato
 
 EffectProcessor::~EffectProcessor()
 {
-	if(effectBuffer != nullptr){
-		free(effectBuffer);
-	}
+	free(effectBuffer);
+
 	for(Effect* effect : effectList){
-		if(effect != nullptr){
-			delete effect;
-		}
+		delete effect;
 	}
-	if(inputGenerator != nullptr){
-		delete inputGenerator;
-	}
+
+	delete inputGenerator;
 }
 
 size_t EffectProcessor::generate(int16_t* outBuffer){
@@ -27,17 +23,21 @@ size_t EffectProcessor::generate(int16_t* outBuffer){
 		memcpy(outBuffer, effectBuffer, bytes);
 		return noSamples;
 	}
+	int e = 0;
 	for(size_t i = 0; i < effectList.size(); i++){
 		Effect* effect = effectList[i];
 		if(effect == nullptr) continue;
 
-		if(i%2 == 0){
+		if(e%2 == 0){
 			effect->applyEffect(effectBuffer, outBuffer, noSamples);
 		}else{
 			effect->applyEffect(outBuffer, effectBuffer, noSamples);
 		}
+
+		e++;
 	}
-	if(effectList.size() % 2 == 0){
+
+	if(e % 2 == 0){
 		memcpy(outBuffer, effectBuffer, bytes);
 	}
 
