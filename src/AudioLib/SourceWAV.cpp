@@ -3,7 +3,7 @@
 #include "../PerfMon.h"
 
 // Number of system buffers to load at once
-#define BUFFER_COUNT 4
+#define BUFFER_COUNT 16
 
 //-------------------------------------------
 // Helper structs and funcs
@@ -27,13 +27,22 @@ struct wavHeader{
 
 
 SourceWAV::SourceWAV(){
-	if(BUFFER_COUNT != 0){
+#ifdef BUFFER_COUNT
+	if(psramFound()){
+		fileBuffer = static_cast<uint8_t*>(ps_malloc(BUFFER_COUNT * BUFFER_SIZE));
+	}else{
 		fileBuffer = static_cast<uint8_t*>(malloc(BUFFER_COUNT * BUFFER_SIZE));
-		if(fileBuffer == nullptr){
-			Serial.println("File buffer malloc error");
-		}
+	}
+#else
+	if(psramFound()){
+		fileBuffer = static_cast<uint8_t*>(ps_malloc(BUFFER_SIZE));
 	}else{
 		fileBuffer = static_cast<uint8_t*>(malloc(BUFFER_SIZE));
+	}
+#endif
+
+	if(fileBuffer == nullptr){
+		Serial.println("SourceWAV: File buffer malloc error");
 	}
 }
 
@@ -57,12 +66,16 @@ void SourceWAV::addReadJob(){
 	readResult = nullptr;
 
 	Sched.addJob({
-			 .type = SDJob::SD_READ,
-			 .file = file,
-			 .size = BUFFER_COUNT == 0 ? BUFFER_SIZE : BUFFER_SIZE * BUFFER_COUNT,
-			 .buffer = fileBuffer,
-			 .result = &readResult
-	 });
+						 .type = SDJob::SD_READ,
+						 .file = file,
+#ifdef BUFFER_COUNT
+						 .size = BUFFER_SIZE * BUFFER_COUNT,
+#else
+						 .size = BUFFER_SIZE,
+#endif
+						 .buffer = fileBuffer,
+						 .result = &readResult
+				 });
 }
 
 bool SourceWAV::readHeader(){
@@ -126,7 +139,7 @@ size_t SourceWAV::generate(int16_t *outBuffer){
 		Profiler.end();
 	}
 
-	if(BUFFER_COUNT == 0){
+	if(fileBuffer == nullptr){
 		memcpy(outBuffer, readResult->buffer, readResult->size);
 		readData+=readResult->size;
 		size_t readBuffers = readResult->size / (BYTES_PER_SAMPLE * NUM_CHANNELS);
