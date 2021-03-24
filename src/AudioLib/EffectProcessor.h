@@ -17,6 +17,7 @@ public:
 	void addEffect(Effect* effect);
 	void removeEffect(int index);
 	Effect* getEffect(int index);
+	void setEffect(int index, Effect* effect);
 
 private:
 	std::vector<Effect*> effectList;

@@ -60,3 +60,8 @@ int EffectProcessor::available(){
 	if(inputGenerator == nullptr) return 0;
 	return inputGenerator->available();
 }
+
+void EffectProcessor::setEffect(int index, Effect* effect){
+	if(index >= effectList.size()) return;
+	effectList[index] = effect;
+}
