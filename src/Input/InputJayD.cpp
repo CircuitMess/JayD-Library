@@ -29,7 +29,18 @@ bool InputJayD::identify(){
 	Wire.beginTransmission(JDNV_ADDR);
 	Wire.write(BYTE_IDENTIFY);
 	Wire.endTransmission();
-	return (Wire.read() == JDNV_ADDR);
+	Wire.requestFrom(JDNV_ADDR, 1);
+	if(Wire.available()){
+		if(Wire.read() == JDNV_ADDR){
+			return true;
+		}
+		else{
+			return false;
+		}
+	}
+	else{
+		return false;
+	}
 }
 
 bool InputJayD::begin(){
