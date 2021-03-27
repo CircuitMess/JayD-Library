@@ -7,7 +7,11 @@ Output::Output(bool timed) :
 		generator(nullptr),
 		timed(timed){
 
-	inBuffer = (int16_t*)calloc(BUFFER_SIZE, sizeof(byte));
+	if(psramFound()){
+		inBuffer = (int16_t*)ps_calloc(BUFFER_SIZE, sizeof(byte));
+	}else{
+		inBuffer = (int16_t*)calloc(BUFFER_SIZE, sizeof(byte));
+	}
 }
 
 Output::~Output(){

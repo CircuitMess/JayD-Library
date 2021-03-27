@@ -17,20 +17,16 @@ Mixer::Mixer()
 Mixer::~Mixer()
 {
 	for(int16_t* buffer : bufferList){
-		if(buffer != nullptr){
-			free(buffer);
-		}
+		free(buffer);
 	}
 	for(auto generator : sourceList){
-		if(generator != nullptr){
-			delete generator;
-		}
+		delete generator;
 	}
 }
 
 size_t Mixer::generate(int16_t *outBuffer){
 	memset(outBuffer, 0, BUFFER_SIZE);
-	int receivedSamples[sourceList.size()] = {0};
+	std::vector<size_t> receivedSamples(sourceList.size(), 0);
 
 	for(uint8_t i = 0; i < sourceList.size(); i++){
 		Generator* generator = sourceList[i];
@@ -53,7 +49,7 @@ size_t Mixer::generate(int16_t *outBuffer){
 		}
 		outBuffer[i] = clip(wave);
 	}
-	size_t longestBuffer = *std::max_element(receivedSamples, receivedSamples + sourceList.size());
+	size_t longestBuffer = *std::max_element(receivedSamples.begin(), receivedSamples.end());
 	return longestBuffer;
 }
 
@@ -67,7 +63,15 @@ int Mixer::available(){
 
 void Mixer::addSource(Generator* generator){
 	sourceList.push_back(generator);
-	bufferList.push_back((int16_t*)calloc(BUFFER_SIZE, sizeof(byte)));
+
+	int16_t* buffer;
+	if(psramFound()){
+		buffer = (int16_t*) ps_calloc(BUFFER_SIZE, sizeof(byte));
+	}else{
+		buffer = (int16_t*) calloc(BUFFER_SIZE, sizeof(byte));
+	}
+
+	bufferList.push_back(buffer);
 }
 
 void Mixer::setMixRatio(uint8_t ratio){
