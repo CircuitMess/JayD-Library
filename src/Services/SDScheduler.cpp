@@ -1,3 +1,4 @@
+#include <SPI.h>
 #include "SDScheduler.h"
 
 SDScheduler Sched;
@@ -13,6 +14,8 @@ void SDScheduler::loop(uint micros){
 }
 
 void SDScheduler::doJob(SDJob& job){
+	SPI.setFrequency(60000000);
+
 	size_t size = job.type == SDJob::SD_READ
 			? job.file.read(job.buffer, job.size)
 			: job.file.write(job.buffer, job.size);
