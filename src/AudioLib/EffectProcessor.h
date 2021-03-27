@@ -19,6 +19,8 @@ public:
 	Effect* getEffect(int index);
 	void setEffect(int index, Effect* effect);
 
+	void setSource(Generator* inputGenerator);
+
 private:
 	std::vector<Effect*> effectList;
 	int16_t *effectBuffer = nullptr;

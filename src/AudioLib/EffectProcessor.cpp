@@ -65,3 +65,7 @@ void EffectProcessor::setEffect(int index, Effect* effect){
 	if(index >= effectList.size()) return;
 	effectList[index] = effect;
 }
+
+void EffectProcessor::setSource(Generator* inputGenerator){
+	EffectProcessor::inputGenerator = inputGenerator;
+}
