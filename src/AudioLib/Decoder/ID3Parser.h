@@ -15,12 +15,12 @@ struct ID3Metadata {
 
 class ID3Parser {
 public:
-	ID3Parser(File& file);
+	ID3Parser(fs::File& file);
 
 	ID3Metadata parse();
 
 private:
-	File file;
+	fs::File file;
 
 	bool unsync;
 	bool extendedHeader;

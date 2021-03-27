@@ -17,13 +17,13 @@
 class SourceMP3 : public Source
 {
 public:
-	SourceMP3(File& file);
+	SourceMP3(fs::File& file);
 	SourceMP3(const String& path);
 	~SourceMP3();
 	size_t generate(int16_t* outBuffer) override;
 	int available() override;
 
-	void open(File& file);
+	void open(fs::File& file);
 	void open(const String& path);
 
 	void close() override;
@@ -36,7 +36,7 @@ public:
 	void seek(uint16_t time, fs::SeekMode mode) override;
 
 private:
-	File file;
+	fs::File file;
 
 	FSBuffer* input = nullptr;
 	DataBuffer* output = nullptr;
@@ -55,7 +55,7 @@ private:
 
 	void processSynth();
 
-	File openUnicodePath(const char* path);
+	fs::File openUnicodePath(const char* path);
 };
 
 
