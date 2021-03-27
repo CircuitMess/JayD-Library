@@ -1,9 +1,8 @@
 #include "SourceWAV.h"
-#include "../AudioSetup.hpp"
 #include "../PerfMon.h"
 
 // Number of system buffers to load at once
-#define BUFFER_COUNT 16
+#define BUFFER_COUNT 1024
 
 //-------------------------------------------
 // Helper structs and funcs
@@ -26,24 +25,14 @@ struct wavHeader{
 // ----------------------------------------------
 
 
-SourceWAV::SourceWAV(){
+SourceWAV::SourceWAV() :
 #ifdef BUFFER_COUNT
-	if(psramFound()){
-		fileBuffer = static_cast<uint8_t*>(ps_malloc(BUFFER_COUNT * BUFFER_SIZE));
-	}else{
-		fileBuffer = static_cast<uint8_t*>(malloc(BUFFER_COUNT * BUFFER_SIZE));
-	}
+readBuffer(BUFFER_COUNT * BUFFER_SIZE)
 #else
-	if(psramFound()){
-		fileBuffer = static_cast<uint8_t*>(ps_malloc(BUFFER_SIZE));
-	}else{
-		fileBuffer = static_cast<uint8_t*>(malloc(BUFFER_SIZE));
-	}
+readBuffer(BUFFER_SIZE)
 #endif
+{
 
-	if(fileBuffer == nullptr){
-		Serial.println("SourceWAV: File buffer malloc error");
-	}
 }
 
 SourceWAV::SourceWAV(fs::File file) : SourceWAV(){
@@ -54,28 +43,104 @@ void SourceWAV::open(fs::File file){
 	this->file = file;
 	channels = sampleRate = bytesPerSample = 0;
 	readHeader();
-	addReadJob();
+	readBuffer.clear();
+	addReadJob(true);
 }
 
 SourceWAV::~SourceWAV(){
-	free(fileBuffer);
+
 }
 
-void SourceWAV::addReadJob(){
+void SourceWAV::addReadJob(bool full){
+	if(readJobPending) return;
+
 	delete readResult;
 	readResult = nullptr;
 
+	size_t size = full ? readBuffer.writeAvailable() : readChunkSize;
+
+	//Serial.printf("Adding read job, size: %ld\n", size);
+
+	if(size == 0 || readBuffer.writeAvailable() < size){
+		return;
+	}
+
+	uint8_t* buf;
+	if(size <= readChunkSize || !psramFound()){
+		buf = static_cast<uint8_t*>(malloc(size));
+	}else{
+		buf = static_cast<uint8_t*>(ps_malloc(size));
+	}
+
 	Sched.addJob({
-						 .type = SDJob::SD_READ,
-						 .file = file,
-#ifdef BUFFER_COUNT
-						 .size = BUFFER_SIZE * BUFFER_COUNT,
-#else
-						 .size = BUFFER_SIZE,
-#endif
-						 .buffer = fileBuffer,
-						 .result = &readResult
-				 });
+			 .type = SDJob::SD_READ,
+			 .file = file,
+			 .size = size,
+			 .buffer = buf,
+			 .result = &readResult
+	 });
+
+	readJobPending = true;
+}
+
+void SourceWAV::processReadJob(){
+	if(readResult == nullptr){
+		if(readBuffer.readAvailable() < BUFFER_SIZE){
+			Profiler.start("WAV read wait");
+			while(readResult == nullptr){
+				delayMicroseconds(1);
+			}
+			Profiler.end();
+		}else{
+			return;
+		}
+	}
+
+	/*if(readBuffer.readAvailable() < BUFFER_SIZE){
+		// chunk size is smaller than BUFFER_SIZE
+		// lets recurse this shit
+
+		addReadJob();
+		processReadJob();
+		return;
+	}*/
+
+	// Serial.printf("Processing read job, buffer size: %ld\n", readResult->size);
+
+	readBuffer.write(readResult->buffer, readResult->size);
+	free(readResult->buffer);
+
+	delete readResult;
+	readResult = nullptr;
+
+	readJobPending = false;
+}
+
+size_t SourceWAV::generate(int16_t *outBuffer){
+	if(!file){
+		Serial.println("file false");
+		return 0;
+	}
+
+	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0){
+		if(!readHeader()) return 0;
+	}
+
+	processReadJob();
+
+	//Serial.printf("Playing, available %ld, took %ld\n", readBuffer.readAvailable(), BUFFER_SIZE);
+
+	size_t size = readBuffer.read(reinterpret_cast<uint8_t*>(outBuffer), BUFFER_SIZE);
+	size_t samples = size / (NUM_CHANNELS * BYTES_PER_SAMPLE);
+
+	for(int i = 0; i < samples; i++){
+		outBuffer[i] *= volume;
+	}
+
+	addReadJob();
+
+	readData += size;
+	return BUFFER_SAMPLES;
 }
 
 bool SourceWAV::readHeader(){
@@ -121,43 +186,6 @@ bool SourceWAV::readHeader(){
 	return true;
 }
 
-size_t SourceWAV::generate(int16_t *outBuffer){
-	if(!file){
-		Serial.println("file false");
-		return 0;
-	}
-
-	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0){
-		if(!readHeader()) return 0;
-	}
-
-	if(readResult == nullptr){
-		Profiler.start("WAV read wait");
-		while(readResult == nullptr){
-			delayMicroseconds(1);
-		}
-		Profiler.end();
-	}
-
-	if(fileBuffer == nullptr){
-		memcpy(outBuffer, readResult->buffer, readResult->size);
-		readData+=readResult->size;
-		size_t readBuffers = readResult->size / (BYTES_PER_SAMPLE * NUM_CHANNELS);
-		addReadJob();
-		return readBuffers;
-	}
-
-	memcpy(outBuffer, fileBuffer + fbPtr * BUFFER_SIZE, BUFFER_SIZE);
-	fbPtr++;
-	if(fbPtr == BUFFER_COUNT){
-		addReadJob();
-		fbPtr = 0;
-	}
-
-	readData += BUFFER_SIZE;
-	return BUFFER_SAMPLES;
-}
-
 int SourceWAV::available(){
 	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0) return 0;
 	return (file.available()/(channels*bytesPerSample));
@@ -183,4 +211,8 @@ void SourceWAV::seek(uint16_t time, fs::SeekMode mode){
 
 void SourceWAV::close(){
 
+}
+
+void SourceWAV::setVolume(uint8_t volume){
+	SourceWAV::volume = (float) volume / 255.0f;
 }

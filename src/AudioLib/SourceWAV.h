@@ -2,9 +2,11 @@
 #define JAYD_SOURCEWAV_H
 
 #include <Arduino.h>
+#include "../AudioSetup.hpp"
 #include <FS.h>
 #include "Source.h"
 #include "../Services/SDScheduler.h"
+#include <Buffer/RingBuffer.h>
 
 class SourceWAV : public Source
 {
@@ -23,18 +25,24 @@ public:
 
 	void close() override;
 
+	void setVolume(uint8_t volume);
+
 private:
 	fs::File file;
 
 	size_t dataSize;
-	size_t readData;
+	size_t readData = 0;
 	bool readHeader();
 
-	uint8_t* fileBuffer = nullptr;
-	uint8_t fbPtr = 0;
+	float volume = 1.0f;
+
+	RingBuffer readBuffer;
+	bool readJobPending = false;
+	static const size_t readChunkSize = BUFFER_SIZE * 4;
 
 	SDResult* readResult = nullptr;
-	void addReadJob();
+	void addReadJob(bool full = false);
+	void processReadJob();
 };
 
 
