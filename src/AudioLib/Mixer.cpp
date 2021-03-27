@@ -77,3 +77,11 @@ void Mixer::setMixRatio(uint8_t ratio){
 uint8_t Mixer::getMixRatio(){
 	return uint8_t(mixRatio);
 }
+
+Generator* Mixer::getSource(size_t index){
+	return sourceList[index];
+}
+
+void Mixer::setSource(size_t index, Generator* source){
+	sourceList[index] = source;
+}

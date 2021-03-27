@@ -2,6 +2,7 @@
 #define JAYD_MIXER_H
 
 #include <Arduino.h>
+#include <vector>
 #include "Generator.h"
 #include "Source.h"
 
@@ -12,6 +13,9 @@ public:
 	~Mixer();
 	size_t generate(int16_t* outBuffer) override;
 	int available() override;
+
+	Generator* getSource(size_t index);
+	void setSource(size_t index, Generator* source);
 
 	void addSource(Generator* source);
 	uint8_t getMixRatio();
