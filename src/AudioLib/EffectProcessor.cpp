@@ -17,6 +17,8 @@ EffectProcessor::~EffectProcessor()
 }
 
 size_t EffectProcessor::generate(int16_t* outBuffer){
+	if(inputGenerator == nullptr) return 0;
+
 	size_t noSamples = inputGenerator->generate(effectBuffer);
 	size_t bytes = noSamples * BYTES_PER_SAMPLE * NUM_CHANNELS;
 	if(effectList.empty()){
