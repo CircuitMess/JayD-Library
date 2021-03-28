@@ -28,6 +28,8 @@ public:
 	 */
 	void setSpeed(float speed);
 
+	void setSource(Source* source);
+
 private:
 	Source *source = nullptr;
 	DataBuffer* dataBuffer = nullptr;

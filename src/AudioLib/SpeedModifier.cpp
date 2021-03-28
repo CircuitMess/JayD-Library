@@ -17,15 +17,15 @@ size_t SpeedModifier::generate(int16_t *outBuffer){
 	float sourcePtr = remainder;
 	size_t destinationPtr = 0;
 
-	while(destinationPtr < BUFFER_SAMPLES){
-		sourcePtr += speed;
+	while(destinationPtr < BUFFER_SAMPLES && floor(sourcePtr) < dataBuffer->readAvailable()){
 		outBuffer[destinationPtr++] = reinterpret_cast<const int16_t*>(dataBuffer->readData())[(int) floor(sourcePtr)];
+		sourcePtr += speed;
 	}
 
 	remainder = sourcePtr - floor(sourcePtr);
 	dataBuffer->readMove(floor(sourcePtr) * BYTES_PER_SAMPLE * NUM_CHANNELS);
 
-	return BUFFER_SAMPLES;
+	return destinationPtr;
 }
 
 int SpeedModifier::available(){
@@ -46,4 +46,8 @@ void SpeedModifier::fillBuffer(){
 		size_t generated = source->generate(reinterpret_cast<int16_t*>(dataBuffer->writeData()));
 		dataBuffer->writeMove(generated * BYTES_PER_SAMPLE * NUM_CHANNELS);
 	}
+}
+
+void SpeedModifier::setSource(Source* source){
+	SpeedModifier::source = source;
 }
