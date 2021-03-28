@@ -14,10 +14,11 @@ int16_t Reverb::signalProcessing(int16_t sample){
 	int16_t echoSample1 = (float)echo[(length + echoCount) % (length)] * echoAmount;
 
 	echo[echoCount++] = (float)sample;
-	sample+=echoSample1;
-	if (echoCount > length){
+	if (echoCount >= length){
 		echoCount = 0;
 	}
+
+	sample+=echoSample1;
 
 	return sample;
 }
@@ -32,6 +33,6 @@ void Reverb::setIntensity(uint8_t intensity){
 	echoAmount = (float)intensity/255.0f;
 }
 
-Reverb::~Reverb() noexcept{
+Reverb::~Reverb(){
 	free(echo);
 }
