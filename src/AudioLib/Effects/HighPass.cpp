@@ -1,7 +1,7 @@
 #include "HighPass.h"
 
 HighPass::HighPass(){
-
+	setIntensity(0);
 }
 
 void HighPass::applyEffect(int16_t *inBuffer, int16_t *outBuffer, size_t numSamples){

@@ -17,7 +17,7 @@ private:
 
 	int16_t signalProcessing(int16_t sample);
 
-	uint16_t scaleFactor;
+	uint16_t scaleFactor = 1;
 };
 
 

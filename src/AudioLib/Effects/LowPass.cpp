@@ -1,7 +1,7 @@
 #include "LowPass.h"
 
 LowPass::LowPass(){
-
+	setIntensity(0);
 }
 
 void LowPass::applyEffect(int16_t *inBuffer, int16_t *outBuffer, size_t numSamples){
