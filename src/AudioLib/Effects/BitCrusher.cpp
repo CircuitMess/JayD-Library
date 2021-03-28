@@ -19,6 +19,6 @@ int16_t BitCrusher::signalProcessing(int16_t sample){
 }
 
 void BitCrusher::setIntensity(uint8_t intensity){
-	scaleFactor = ((float) intensity / 255.0f) * pow(2, 14);
+	scaleFactor = ((float) intensity / 255.0f) * 4096.0f;
 	scaleFactor = max((uint16_t) 1, scaleFactor);
 }
