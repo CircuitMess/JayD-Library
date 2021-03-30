@@ -5,6 +5,7 @@
 #include "MatrixBig.h"
 #include "MatrixL.h"
 #include "MatrixR.h"
+#include "MatrixMid.h"
 
 class MatrixManager : public LoopListener {
 public:
@@ -12,8 +13,10 @@ public:
 	MatrixBig matrixBig;
 	MatrixL matrixL;
 	MatrixR matrixR;
+	MatrixMid matrixMid;
 
 	void loop(uint time);
+	void push();
 protected:
 	LEDmatrixImpl* ledmatrix;
 };

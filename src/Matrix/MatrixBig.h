@@ -8,7 +8,6 @@ class MatrixBig : public MatrixPartition {
 public:
 	MatrixBig(LEDmatrixImpl* matrix);
 
-protected:
 	void push() override;
 };
 

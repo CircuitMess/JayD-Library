@@ -13,11 +13,6 @@ void MatrixPartition::clear(){
 	memset(buffer, 0, width * height);
 }
 
-void MatrixPartition::commit(){
-	push();
-	matrix->push();
-}
-
 void MatrixPartition::vu(uint8_t amp){
 	clear();
 	uint8_t total = ((float) amp / 255.0f) * (float) height;
@@ -93,9 +88,5 @@ void MatrixPartition::loop(uint _time)
 			push();
 			return;
 		}
-	}
-	if(memcmp(buffer, pastBuffer, width*height) != 0){
-		push();
-		memcpy(pastBuffer, buffer, width*height);
 	}
 }

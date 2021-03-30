@@ -17,9 +17,8 @@ public:
 	void loop(uint _time) override;
 	void drawBitmap(int x, int y, uint width, uint height, uint8_t* data);
 
-	void commit();
-protected:
 	virtual void push() = 0;
+protected:
 	LEDmatrixImpl* matrix;
 
 	uint8_t width;
