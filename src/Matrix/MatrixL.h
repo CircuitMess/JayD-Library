@@ -8,7 +8,6 @@ public:
 	MatrixL(LEDmatrixImpl* matrix);
 
 	void push() override;
-protected:
 };
 
 
