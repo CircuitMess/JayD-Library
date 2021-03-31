@@ -9,6 +9,7 @@
 #include "../Mixer.h"
 #include "../SourceWAV.h"
 #include "../EffectType.hpp"
+#include "../SourceAAC.h"
 #include <Sync/Queue.h>
 
 struct MixRequest {
@@ -49,7 +50,7 @@ private:
 
 	fs::File file[2];
 
-	SourceWAV* source[2] = { nullptr };
+	SourceAAC* source[2] = { nullptr };
 
 	EffectProcessor* effector[2];
 	Mixer* mixer;

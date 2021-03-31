@@ -10,7 +10,7 @@ MixSystem::MixSystem(const fs::File& f1, const fs::File& f2) : MixSystem(){
 	open(1, f2);
 }
 
-MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 8192, this), queue(32, sizeof(MixRequest*)){
+MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 4 * 1024, this), queue(32, sizeof(MixRequest*)){
 	mixer = new Mixer();
 
 	for(int i = 0; i < 2; i++){
@@ -25,7 +25,7 @@ MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 8192, this), queue(3
 
 	out = new OutputI2S({
 								.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_TX),
-								.sample_rate = 48000,
+								.sample_rate = 44100,
 								.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
 								.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
 								.communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
@@ -44,7 +44,7 @@ bool MixSystem::open(uint8_t c, const fs::File& file){
 	if(!file) return false;
 
 	delete source[c];
-	auto source = this->source[c] = new SourceWAV(file);
+	auto source = this->source[c] = new SourceAAC(file);
 
 	if(speed[c]){
 		speed[c]->setSource(source);
