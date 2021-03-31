@@ -1,4 +1,4 @@
-#include "Settings.hpp"
+#include "Settings.h"
 #include <Util/Settings.h>
 
 SettingsImpl Settings;

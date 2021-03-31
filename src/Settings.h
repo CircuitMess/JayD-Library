@@ -1,5 +1,5 @@
-#ifndef JAYD_LIBRARY_SETTINGS_HPP
-#define JAYD_LIBRARY_SETTINGS_HPP
+#ifndef JAYD_LIBRARY_SETTINGS_H
+#define JAYD_LIBRARY_SETTINGS_H
 
 #include <Arduino.h>
 
@@ -33,4 +33,4 @@ private:
 extern SettingsImpl Settings;
 
 
-#endif //JAYD_LIBRARY_SETTINGS_HPP
+#endif //JAYD_LIBRARY_SETTINGS_H
