@@ -6,3 +6,5 @@ const i2s_pin_config_t i2s_pin_config = {
 		.data_out_num = I2S_DO,
 		.data_in_num = I2S_DI
 };
+LEDmatrixImpl LEDmatrix;
+MatrixManager matrixManager(&LEDmatrix);
