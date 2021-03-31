@@ -90,3 +90,15 @@ void MatrixPartition::loop(uint _time)
 		}
 	}
 }
+
+/**************************************************************************/
+/*!
+	@brief  Returns the completion rate in percentage for the current animation.
+	@return  Completion rate (in percentage 0-100) for the current animation. If none are played, then defaults to zero.
+*/
+/**************************************************************************/
+float MatrixPartition::getAnimationCompletionRate()
+{
+	if(animationFrame == nullptr || animation == nullptr) return 0.0;
+	return ((float)(micros() - animationStartMicros)) / ((float)(animation->getLoopDuration()*1000))*100;
+}

@@ -17,6 +17,8 @@ public:
 
 	void loop(uint time);
 	void push();
+	void stopAnimation();
+	void clear();
 protected:
 	LEDmatrixImpl* ledmatrix;
 };

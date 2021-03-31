@@ -14,6 +14,7 @@ public:
 
 	void startAnimation(Animation* _animation, bool loop);
 	void stopAnimation();
+	float getAnimationCompletionRate();
 	void loop(uint _time) override;
 	void drawBitmap(int x, int y, uint width, uint height, uint8_t* data);
 

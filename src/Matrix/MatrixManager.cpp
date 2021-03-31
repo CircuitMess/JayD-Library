@@ -21,3 +21,18 @@ void MatrixManager::push(){
 	matrixBig.push();
 	matrixMid.push();
 }
+
+void MatrixManager::stopAnimation(){
+	matrixR.stopAnimation();
+	matrixL.stopAnimation();
+	matrixBig.stopAnimation();
+	matrixMid.stopAnimation();
+}
+
+void MatrixManager::clear(){
+	matrixR.clear();
+	matrixL.clear();
+	matrixBig.clear();
+	matrixMid.clear();
+	ledmatrix->clear();
+}
