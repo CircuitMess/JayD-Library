@@ -2,7 +2,7 @@
 #include "../AudioSetup.hpp"
 
 SpeedModifier::SpeedModifier(Source* source) : source(source){
-	dataBuffer = new DataBuffer(BUFFER_SIZE * 3);
+	dataBuffer = new DataBuffer(BUFFER_SIZE * 3, true);
 }
 
 SpeedModifier::~SpeedModifier() noexcept{
@@ -10,7 +10,7 @@ SpeedModifier::~SpeedModifier() noexcept{
 }
 
 size_t SpeedModifier::generate(int16_t *outBuffer){
-	if(dataBuffer->readAvailable() < BUFFER_SIZE * 2){
+	if(dataBuffer->readAvailable() < (float) BUFFER_SIZE * 2){
 		fillBuffer();
 	}
 
@@ -34,7 +34,7 @@ int SpeedModifier::available(){
 }
 
 void SpeedModifier::setModifier(uint8_t modifier){
-	speed = (float) modifier * (1.5f / 255.0f) + 0.5f;
+	speed = (float) modifier * (1.0f / 255.0f) + 0.5f;
 }
 
 void SpeedModifier::setSpeed(float speed){
@@ -42,7 +42,7 @@ void SpeedModifier::setSpeed(float speed){
 }
 
 void SpeedModifier::fillBuffer(){
-	while(dataBuffer->writeAvailable() >= BUFFER_SIZE){
+	while(dataBuffer->readAvailable() < BUFFER_SIZE * 2){
 		size_t generated = source->generate(reinterpret_cast<int16_t*>(dataBuffer->writeData()));
 		dataBuffer->writeMove(generated * BYTES_PER_SAMPLE * NUM_CHANNELS);
 	}
