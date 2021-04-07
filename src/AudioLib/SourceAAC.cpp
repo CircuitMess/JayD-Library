@@ -2,8 +2,8 @@
 #include "../PerfMon.h"
 
 #define AAC_READ_BUFFER 1024 * 64
-#define AAC_READ_CHUNK 1024 * 2
-#define AAC_DECODE_MIN_INPUT 1024 // should be bigger than read chunk
+#define AAC_READ_CHUNK 1024 * 4 // should be bigger than min input
+#define AAC_DECODE_MIN_INPUT 1024 // should be smaller than read chunk
 #define AAC_OUT_BUFFER 1024 * 4
 
 SourceAAC::SourceAAC() :
@@ -116,7 +116,7 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 
 	Profiler.start("decode");
 	while(dataBuffer.readAvailable() < BUFFER_SIZE){
-		//Serial.printf("Decoding, available %ld, took %ld\n", readBuffer.readAvailable(), fillBuffer.writeAvailable());
+		// Serial.printf("Grabbing, available %ld, taking %ld\n", readBuffer.readAvailable(), fillBuffer.writeAvailable());
 		//Profiler.start("fill read");
 		fillBuffer.writeMove(readBuffer.read(fillBuffer.writeData(), fillBuffer.writeAvailable()));
 		if(fillBuffer.readAvailable() < AAC_DECODE_MIN_INPUT){
@@ -129,20 +129,34 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 
 		ADTSHeader* adts = (ADTSHeader*) fillBuffer.readData();
 		if(adts->syncword_0_to_8 != 0xff || adts->syncword_9_to_12 != 0xf){
-			Serial.println("Incorrect frame");
+			Serial.println("Incorrect frame, searching...");
+
+			size_t bytesMoved = 0;
+			while((adts->syncword_0_to_8 != 0xff || adts->syncword_9_to_12 != 0xf) && (++bytesMoved + sizeof(ADTSHeader)) < fillBuffer.readAvailable()){
+				adts = (ADTSHeader*) (fillBuffer.readData() + bytesMoved);
+			}
+
+			if(adts->syncword_0_to_8 != 0xff || adts->syncword_9_to_12 != 0xf && (bytesMoved + sizeof(ADTSHeader)) == fillBuffer.readAvailable()){
+				Serial.printf("Can't find frame. searched %lu bytes\n", bytesMoved);
+				return 0;
+			}else{
+				Serial.printf("Frame found after %lu bytes\n", bytesMoved);
+			}
+
+			fillBuffer.readMove(bytesMoved);
+			fillBuffer.writeMove(readBuffer.read(fillBuffer.writeData(), fillBuffer.writeAvailable()));
 		}
 
-		uint frameSize = adts->frame_length_0_to_1 << 11 | adts->frame_length_2_to_9 << 3 | adts->frame_length_10_to_12;
+		uint frameSize = 0; //adts->frame_length_0_to_1 << 11 | adts->frame_length_2_to_9 << 3 | adts->frame_length_10_to_12;
 
 		uint8_t* data = const_cast<uint8_t*>(fillBuffer.readData());
 		int bytesLeft = fillBuffer.readAvailable();
-		//Profiler.start("decode");
+		// Serial.printf("Decoding, available %ld\n", fillBuffer.readAvailable());
 		int ret = AACDecode(hAACDecoder, &data, &bytesLeft, reinterpret_cast<short*>(dataBuffer.writeData()));
-		//Profiler.end();
 		if(ret){
-			Serial.println("decode error");
+			Serial.printf("decode error %d, frame size %d B\n", ret, frameSize);
 			fillBuffer.readMove(frameSize);
-			return 0;
+			continue;
 		}
 
 		fillBuffer.readMove(fillBuffer.readAvailable() - bytesLeft);
