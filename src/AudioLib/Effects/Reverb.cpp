@@ -8,7 +8,6 @@ Reverb::Reverb(){
 	}
 }
 
-
 int16_t Reverb::signalProcessing(int16_t sample){
 
 	int16_t echoSample1 = (float) echo[(length + echoCount) % (length)] * echoAmount;
@@ -18,34 +17,14 @@ int16_t Reverb::signalProcessing(int16_t sample){
 		echoCount = 0;
 	}
 
-	float maxAmp = pow(2,15)-1;
-	float threshold = maxAmp * 0.9;
-	float window = maxAmp - threshold;
+	float sampleScalingFactor = (0.5f * ((1.0f - ((((16.0f*(echoAmount+horizontalScale)-1)/(16.0f*(echoAmount+horizontalScale)+1))*verticalScale))) + 1.0f));
+	float echoSampleScalingFactor = ((((16.0f*(echoAmount+horizontalScale)-1)/(16.0f*(echoAmount+horizontalScale)+1))*verticalScale) * 0.5f);
+	//	scaling factors:	for intensity 0(min) -> sample*1 + echoSample1*0
+	//						for intensity 1(max) -> sample*0.5 + echoSample1*0.5
+	//	function y=(16*(x+(1)/(16))-1)/(16*(x+(1)/(16))+1)*(18/16)
+	sample = (float) sample * sampleScalingFactor/(1.0f+echoSampleScalingFactor/4.0f) + (float) echoSample1 * echoSampleScalingFactor*(1.0f+echoSampleScalingFactor/4.0f);
 
-	if(abs(sample+echoSample1)> 0x7FFF){
-
-		sample = (float)sample*(0.5f*((1 - echoAmount) + 1)) + (float)echoSample1*(echoAmount*0.5f);
-	}
-	else{
-		sample+=echoSample1;
-	}
-
-	if(sample < 0){
-
-		threshold = -threshold;
-	}
-
-	if(abs(sample) >= abs(threshold)){
-
-		float over = (float)sample - threshold;
-		float overC = over/window;
-
-		sample = threshold + over * cos(overC*M_PI_2);
-
-		return (int16_t)sample;
-	}
-	else
-		return (int16_t)sample;
+	return (int16_t) sample;
 }
 
 

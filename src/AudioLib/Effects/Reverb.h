@@ -26,6 +26,8 @@ private:
 	uint16_t echoCount = 0;
 	float echoAmount = 0;
 
+	float horizontalScale = 1.0f/16.0f;
+	float verticalScale = 18.0f/16.0f;
 };
 
 
