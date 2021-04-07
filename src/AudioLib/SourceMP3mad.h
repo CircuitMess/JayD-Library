@@ -14,12 +14,12 @@
 #define MP3_BUFFERSIZE 2106 * 3
 #define DATA_BUFFERSIZE (1156 * 2)
 
-class SourceMP3 : public Source
+class SourceMP3mad : public Source
 {
 public:
-	SourceMP3(fs::File& file);
-	SourceMP3(const String& path);
-	~SourceMP3();
+	SourceMP3mad(fs::File& file);
+	SourceMP3mad(const String& path);
+	~SourceMP3mad();
 	size_t generate(int16_t* outBuffer) override;
 	int available() override;
 

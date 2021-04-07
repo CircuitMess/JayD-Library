@@ -1,18 +1,18 @@
-#include "SourceMP3.h"
+#include "SourceMP3mad.h"
 #include "Decoder/mad/synth.h"
 #include "../AudioSetup.hpp"
 #include "../PerfMon.h"
 #include <SD.h>
 
-SourceMP3::SourceMP3(const String& path){
+SourceMP3mad::SourceMP3mad(const String& path){
 	open(path);
 }
 
-SourceMP3::~SourceMP3(){
+SourceMP3mad::~SourceMP3mad(){
 	delete input;
 }
 
-void SourceMP3::open(File& file){
+void SourceMP3mad::open(File& file){
 	this->file = file;
 
 	ID3Parser parser(file);
@@ -45,7 +45,7 @@ void SourceMP3::open(File& file){
 	bytesPerSample = BYTES_PER_SAMPLE;
 }
 
-size_t SourceMP3::generate(int16_t* outBuffer){
+size_t SourceMP3mad::generate(int16_t* outBuffer){
 	if(!file){
 		Serial.println("file false");
 		return 0;
@@ -63,7 +63,7 @@ size_t SourceMP3::generate(int16_t* outBuffer){
 	return BUFFER_SAMPLES;
 }
 
-void SourceMP3::decode(){
+void SourceMP3mad::decode(){
 	// Process remaining samples
 	processSynth();
 
@@ -110,7 +110,7 @@ void SourceMP3::decode(){
 	}
 }
 
-void SourceMP3::processSynth(){
+void SourceMP3mad::processSynth(){
 	if(samplesRead == samplesAvailable) return;
 
 	int dataPtr = 0;
@@ -127,16 +127,16 @@ void SourceMP3::processSynth(){
 	samplesRead = i;
 }
 
-void SourceMP3::open(const String& path){
+void SourceMP3mad::open(const String& path){
 	File f = openUnicodePath(path.c_str());
 	open(f);
 }
 
-SourceMP3::SourceMP3(File& file){
+SourceMP3mad::SourceMP3mad(File& file){
 	open(file);
 }
 
-File SourceMP3::openUnicodePath(const char* filepath){
+File SourceMP3mad::openUnicodePath(const char* filepath){
 	size_t len = strlen(filepath) + 1;
 	char* path = static_cast<char*>(malloc(len));
 	memcpy(path, filepath, len);
@@ -184,11 +184,11 @@ File SourceMP3::openUnicodePath(const char* filepath){
 	return file;
 }
 
-const ID3Metadata& SourceMP3::getMetadata() const{
+const ID3Metadata& SourceMP3mad::getMetadata() const{
 	return metadata;
 }
 
-void SourceMP3::close(){
+void SourceMP3mad::close(){
 	mad_stream_finish(stream);
 	mad_frame_finish(frame);
 	mad_synth_finish(synth);
@@ -201,18 +201,18 @@ void SourceMP3::close(){
 	delete output;
 }
 
-int SourceMP3::available(){
+int SourceMP3mad::available(){
 	return file.available();
 }
 
-uint16_t SourceMP3::getDuration(){
+uint16_t SourceMP3mad::getDuration(){
 	return 0;
 }
 
-uint16_t SourceMP3::getElapsed(){
+uint16_t SourceMP3mad::getElapsed(){
 	return 0;
 }
 
-void SourceMP3::seek(uint16_t time, fs::SeekMode mode){
+void SourceMP3mad::seek(uint16_t time, fs::SeekMode mode){
 
 }
