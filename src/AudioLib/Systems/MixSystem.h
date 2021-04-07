@@ -11,12 +11,13 @@
 #include "../EffectType.hpp"
 #include "../SourceAAC.h"
 #include <Sync/Queue.h>
+#include "../InfoGenerator.h"
 
 struct MixRequest {
-	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_EFFECT, SET_EFFECT_INTENSITY } type;
+	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_EFFECT, SET_EFFECT_INTENSITY, SET_INFO } type;
 	uint8_t channel;
 	uint8_t slot;
-	uint8_t value;
+	size_t value;
 };
 
 class MixSystem {
@@ -44,6 +45,9 @@ public:
 	void setEffect(uint8_t channel, uint8_t slot, EffectType type);
 	void setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intensity);
 
+	void setOutInfo(InfoGenerator* outInfoGen);
+	void setChannelInfo(uint8_t channel, InfoGenerator* channelInfoGen);
+
 private:
 	bool running = false;
 	Queue queue;
@@ -63,6 +67,7 @@ private:
 	void _setSpeed(uint8_t channel, uint8_t speed);
 	void _setEffect(uint8_t channel, uint8_t slot, EffectType type);
 	void _setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intensity);
+	void _setInfoGenerator(uint8_t channel, InfoGenerator* generator);
 
 	static Effect* (* getEffect[EffectType::COUNT])();
 

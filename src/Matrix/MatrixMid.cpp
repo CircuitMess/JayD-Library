@@ -18,10 +18,9 @@ void MatrixMid::push(){
 	}
 }
 
-void MatrixMid::vu(uint8_t amp){
+void MatrixMid::vu(uint16_t amp){
 	clear();
 	uint8_t total = ((float) amp / 255.0f) * (float) (width);
-	Serial.println(total);
 	for(int i = 0; i <= total+1; i++){
 		for(int j = 0; j < height; j++){
 			drawPixel(i, j, 255);

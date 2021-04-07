@@ -81,6 +81,9 @@ void MixSystem::audioThread(Task* task){
 				case MixRequest::SET_EFFECT_INTENSITY:
 					system->_setEffectIntensity(request->channel, request->slot, request->value);
 					break;
+				case MixRequest::SET_INFO:
+					system->_setInfoGenerator(request->channel, (InfoGenerator*)request->value);
+					break;
 			}
 
 			delete request;
@@ -215,3 +218,29 @@ Effect* (*MixSystem::getEffect[])() = {
 		[]() -> Effect* { return new Reverb(); },
 		[]() -> Effect* { return new BitCrusher(); }
 };
+
+void MixSystem::setOutInfo(InfoGenerator *outInfoGen) {
+	setChannelInfo(2, outInfoGen);
+}
+
+void MixSystem::_setInfoGenerator(uint8_t channel, InfoGenerator *generator) {
+	if(channel > 2 || generator == nullptr) return;
+	if(channel == 2){
+		out->setSource(generator);
+		generator->setSource(mixer);
+	}else{
+		mixer->setSource(channel, generator);
+		generator->setSource(effector[channel]);
+	}
+}
+
+void MixSystem::setChannelInfo(uint8_t channel, InfoGenerator *channelInfoGen) {
+	if(!out->isRunning()){
+		_setInfoGenerator(channel, channelInfoGen);
+		return;
+	}
+
+	if(queue.count() == queue.getQueueSize()) return;
+	MixRequest* request = new MixRequest({ MixRequest::SET_INFO, channel, 0, (size_t)channelInfoGen });
+	queue.send(&request);
+}

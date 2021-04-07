@@ -9,7 +9,7 @@ public:
 	MatrixMid(LEDmatrixImpl* matrix);
 
 	void push() override;
-	void vu(uint8_t value) override;
+	void vu(uint16_t value) override;
 };
 
 
