@@ -72,7 +72,7 @@ void SourceWAV::addReadJob(bool full){
 		buf = static_cast<uint8_t*>(ps_malloc(size));
 	}
 
-	Sched.addJob({
+	Sched.addJob(new SDJob{
 			 .type = SDJob::SD_READ,
 			 .file = file,
 			 .size = size,
