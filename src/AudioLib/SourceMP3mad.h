@@ -1,5 +1,5 @@
-#ifndef JAYD_SOURCEMP3_H
-#define JAYD_SOURCEMP3_H
+#ifndef JAYD_SOURCEMP3MAD_H
+#define JAYD_SOURCEMP3MAD_H
 
 #include <Arduino.h>
 #include <FS.h>
