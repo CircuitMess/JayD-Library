@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(JayD-Library)
 set(PORT /dev/ttyUSB0)
-set(DEVICE cm:esp32:spencer)
+set(DEVICE cm:esp32:jayd)
 set(CMAKE_CXX_STANDARD 11)
 
 if(WIN32 OR CYGWIN)
