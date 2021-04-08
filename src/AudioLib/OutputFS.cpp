@@ -177,7 +177,7 @@ void OutputFS::addWriteJob(void* buffer, size_t size){
 	delete writeResult;
 	writeResult = nullptr;
 
-	Sched.addJob({
+	Sched.addJob(new SDJob{
 			 .type = SDJob::SD_WRITE,
 			 .file = *file,
 			 .size = size,
