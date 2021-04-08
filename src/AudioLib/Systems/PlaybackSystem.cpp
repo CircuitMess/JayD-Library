@@ -6,7 +6,7 @@ PlaybackSystem::PlaybackSystem(const fs::File& f) : PlaybackSystem(){
 	open(f);
 }
 
-PlaybackSystem::PlaybackSystem() : audioTask("MixAudio", audioThread, 4 * 1024, this), queue(32, sizeof(PlaybackRequest*)){
+PlaybackSystem::PlaybackSystem() : audioTask("MixAudio", audioThread, 4 * 1024, this), queue(4, sizeof(PlaybackRequest*)){
 	out = new OutputI2S({
 								.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_TX),
 								.sample_rate = 48000,

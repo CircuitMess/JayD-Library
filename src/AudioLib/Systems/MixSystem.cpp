@@ -10,7 +10,7 @@ MixSystem::MixSystem(const fs::File& f1, const fs::File& f2) : MixSystem(){
 	open(1, f2);
 }
 
-MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 4 * 1024, this), queue(32, sizeof(MixRequest*)){
+MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 4 * 1024, this), queue(6, sizeof(MixRequest*)){
 	mixer = new Mixer();
 
 	for(int i = 0; i < 2; i++){
