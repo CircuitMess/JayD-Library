@@ -29,9 +29,11 @@ void PerfMon::report(){
 
 	Serial.printf(" | H: %d B\n", ESP.getFreeHeap());
 
+	mutex.lock();
 	for(const auto& r : reports){
 		Serial.printf(" -- %10s: %6.2f\n", r.name.c_str(), (float) r.duration / 1000.0f);
 	}
+	mutex.unlock();
 	Serial.println();
 }
 
@@ -50,5 +52,7 @@ void PerfMon::end(){
 #endif
 
 	uint32_t stopTime = micros();
+	mutex.lock();
 	reports.push_back({ current, stopTime - startTime });
+	mutex.unlock();
 }
