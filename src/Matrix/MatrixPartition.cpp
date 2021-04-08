@@ -9,8 +9,12 @@ void MatrixPartition::drawPixel(int x, int y, uint8_t brightness){
 	buffer[y * width + x] = brightness;
 }
 
-void MatrixPartition::clear(){
-	memset(buffer, 0, width * height);
+void MatrixPartition::clear(bool on){
+	if(on){
+		memset(buffer, 255, width * height);
+	}else{
+		memset(buffer, 0, width * height);
+	}
 }
 
 void MatrixPartition::vu(uint8_t amp){

@@ -10,7 +10,7 @@ public:
 
 	virtual void vu(uint8_t amp);
 	void drawPixel(int x, int y, uint8_t brightness);
-	void clear();
+	void clear(bool on = false);
 
 	void startAnimation(Animation* _animation, bool loop);
 	void stopAnimation();

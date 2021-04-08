@@ -29,10 +29,13 @@ void MatrixManager::stopAnimation(){
 	matrixMid.stopAnimation();
 }
 
-void MatrixManager::clear(){
-	matrixR.clear();
-	matrixL.clear();
-	matrixBig.clear();
-	matrixMid.clear();
-	ledmatrix->clear();
+void MatrixManager::clear(bool on){
+	matrixR.clear(on);
+	matrixL.clear(on);
+	matrixBig.clear(on);
+	matrixMid.clear(on);
+	if(on){
+		push();
+		return;
+	}
 }
