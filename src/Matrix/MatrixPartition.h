@@ -8,7 +8,7 @@ class MatrixPartition : public LoopListener {
 public:
 	MatrixPartition(LEDmatrixImpl* matrix, uint8_t width, uint8_t height);
 
-	void vu(uint8_t amp);
+	virtual void vu(uint8_t amp);
 	void drawPixel(int x, int y, uint8_t brightness);
 	void clear();
 
