@@ -2,13 +2,12 @@
 #include <CircuitOS.h>
 #include "src/JayD.hpp"
 #include <Loop/LoopManager.h>
-//#include "src/Input/InputJayD.h"
 #include "src/AudioLib/SourceWAV.h"
 #include "src/AudioLib/OutputI2S.h"
 #include "src/AudioLib/Mixer.h"
 #include "src/PerfMon.h"
 #include "src/Services/SDScheduler.h"
-#include "src/AudioLib/SourceMP3.h"
+#include "src/Input/InputJayD.h"
 
 #include <SPI.h>
 #include <Devices/LEDmatrix/LEDmatrix.h>
@@ -16,27 +15,28 @@
 #include <SD.h>
 #include <WiFi.h>
 #include <Util/Task.h>
+#include <esp_partition.h>
 
-//LEDmatrixImpl LEDMatrix;
+LEDmatrixImpl LEDMatrix;
 
 int pixel = 0;
 
 void lightPixel(int pixel, bool turnoff = false){
 	if(turnoff){
-		//LEDMatrix.drawPixel(::pixel, 0);
+		LEDMatrix.drawPixel(::pixel, 0);
 	}
 
 	pixel = max(pixel, 0);
 	pixel = min(pixel, 16 * 9 - 1);
 
-	//LEDMatrix.drawPixel(pixel, 255);
+	LEDMatrix.drawPixel(pixel, 255);
 
 	::pixel = pixel;
 }
 
 void recurseDir(File dir){
 	File f;
-	while(f = f.openNextFile()){
+	while(f = dir.openNextFile()){
 		if(f.isDirectory()){
 			recurseDir(f);
 			continue;
@@ -111,6 +111,26 @@ void setup(){
 	Serial.begin(115200);
 	WiFi.mode(WIFI_OFF);
 	btStop();
+
+	esp_chip_info_t chip_info;
+	esp_chip_info(&chip_info);
+	printf("This is ESP32 chip with %d CPU cores, WiFi%s%s, ",
+		   chip_info.cores,
+		   (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
+		   (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
+
+	printf("silicon revision %d, ", chip_info.revision);
+
+	printf("%dMB %s flash\n", spi_flash_get_chip_size() / (1024 * 1024),
+		   (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
+
+	fflush(stdout);
+
+	if(psramFound()){
+		Serial.printf("PSRAM init: %s, free: %d B\n", psramInit() ? "Yes" : "No", ESP.getFreePsram());
+	}else{
+		Serial.println("No PSRAM");
+	}
 
 	disableCore0WDT();
 	disableCore1WDT();
