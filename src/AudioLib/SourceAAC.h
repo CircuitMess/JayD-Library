@@ -31,6 +31,8 @@ public:
 
 	void setVolume(uint8_t volume);
 
+	void setRepeat(bool repeat);
+
 private:
 	fs::File file;
 	uint32_t bitrate = 0;
@@ -81,6 +83,10 @@ private:
 	SDResult* readResult = nullptr;
 	void addReadJob(bool full = false);
 	void processReadJob();
+	void reload();
+
+	bool repeat = false;
+
 };
 
 

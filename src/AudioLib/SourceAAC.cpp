@@ -155,7 +155,15 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 		int ret = AACDecode(hAACDecoder, &data, &bytesLeft, reinterpret_cast<short*>(dataBuffer.writeData()));
 		if(ret){
 			Serial.printf("decode error %d, frame size %d B\n", ret, frameSize);
-			fillBuffer.readMove(frameSize);
+			if(frameSize == 0){
+				if(repeat){
+					reload();
+				}else {
+					return 0;
+				}
+			}else {
+				fillBuffer.readMove(frameSize);
+			}
 			continue;
 		}
 
@@ -218,5 +226,15 @@ void SourceAAC::close(){
 
 void SourceAAC::setVolume(uint8_t volume){
 	SourceAAC::volume = (float) volume / 255.0f;
+}
+
+void SourceAAC::reload() {
+	seek(0, SeekSet);
+	readBuffer.clear();
+	dataBuffer.clear();
+}
+
+void SourceAAC::setRepeat(bool repeat) {
+	SourceAAC::repeat = repeat;
 }
 
