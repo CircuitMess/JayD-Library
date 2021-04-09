@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <vector>
+#include <Sync/Mutex.h>
 
 struct PerfMonReport {
 	String name;
@@ -20,6 +21,8 @@ private:
 	String current;
 	uint32_t initTime = 0;
 	uint32_t startTime = 0;
+
+	Mutex mutex;
 
 	std::vector<PerfMonReport> reports;
 };

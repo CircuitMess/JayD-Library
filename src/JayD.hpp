@@ -31,6 +31,11 @@
 #define I2C_SDA 26
 #define I2C_SCL 27
 
+#define SPI_SCK 18
+#define SPI_MISO 19
+#define SPI_MOSI 23
+#define SPI_SS -1
+
 #include <Arduino.h>
 #include <driver/i2s.h>
 #include <Devices/LEDmatrix/LEDmatrix.h>

@@ -1,19 +1,32 @@
 #include "SourceMP3.h"
-#include "Decoder/mad/synth.h"
-#include "../AudioSetup.hpp"
 #include "../PerfMon.h"
-#include <SD.h>
+#include "Decoder/ID3Parser.h"
 
-SourceMP3::SourceMP3(const String& path){
-	open(path);
+#define MP3_READ_BUFFER 1024 * 64
+#define MP3_READ_CHUNK 1024 * 4 // should be bigger than min input
+#define MP3_DECODE_MIN_INPUT 1024 * 2 // should be smaller than read chunk
+#define MP3_OUT_BUFFER 1024 * 8
+
+SourceMP3::SourceMP3() :
+		readBuffer(MP3_READ_BUFFER),
+		fillBuffer(MP3_DECODE_MIN_INPUT),
+		dataBuffer(MP3_OUT_BUFFER, true){
+
 }
 
-SourceMP3::~SourceMP3(){
-	delete input;
+SourceMP3::SourceMP3(fs::File file) : SourceMP3(){
+	open(file);
 }
 
-void SourceMP3::open(File& file){
-	this->file = file;
+void SourceMP3::open(fs::File file){
+	this->file.close();
+	channels = sampleRate = bytesPerSample = bitrate = readData = 0;
+	readBuffer.clear();
+	dataBuffer.clear();
+
+	if(!file){
+		return;
+	}
 
 	ID3Parser parser(file);
 	metadata = parser.parse();
@@ -22,27 +35,78 @@ void SourceMP3::open(File& file){
 		return;
 	}
 
+	dataSize = file.size();
+	bitrate = 128000;
+
+	decoder = MP3InitDecoder();
+	if(decoder == nullptr){
+		Serial.println("Decoder construct fail");
+
+	}else{
+		Serial.println("Decoder constructed");
+	}
+
 	file.seek(metadata.headerSize);
-	Serial.printf("Header size %d\n", metadata.headerSize);
+	this->file = file;
+	addReadJob(true);
+}
 
-	dataStart = 0;
+SourceMP3::~SourceMP3(){
 
-	input = new FSBuffer(file, MP3_BUFFERSIZE);
-	input->refill();
+}
 
-	stream = static_cast<mad_stream*>(malloc(sizeof(mad_stream)));
-	frame = static_cast<mad_frame*>(malloc(sizeof(mad_frame)));
-	synth = static_cast<mad_synth*>(malloc(sizeof(mad_synth)));
+void SourceMP3::addReadJob(bool full){
+	if(readJobPending) return;
 
-	mad_stream_init(stream);
-	mad_frame_init(frame);
-	mad_synth_init(synth);
+	delete readResult;
+	readResult = nullptr;
 
-	output = new DataBuffer(DATA_BUFFERSIZE);
+	size_t size = full ? readBuffer.writeAvailable() : MP3_READ_CHUNK;
 
-	samplesRead = samplesAvailable = 0;
-	decode();
-	bytesPerSample = BYTES_PER_SAMPLE;
+	//Serial.printf("Adding read job, size: %ld\n", size);
+
+	if(size == 0 || readBuffer.writeAvailable() < size){
+		return;
+	}
+
+	uint8_t* buf;
+	if(size <= MP3_READ_CHUNK || !psramFound()){
+		buf = static_cast<uint8_t*>(malloc(size));
+	}else{
+		buf = static_cast<uint8_t*>(ps_malloc(size));
+	}
+
+	Sched.addJob({
+						 .type = SDJob::SD_READ,
+						 .file = file,
+						 .size = size,
+						 .buffer = buf,
+						 .result = &readResult
+				 });
+
+	readJobPending = true;
+}
+
+void SourceMP3::processReadJob(){
+	if(readResult == nullptr){
+		if(readBuffer.readAvailable() + fillBuffer.readAvailable() < MP3_DECODE_MIN_INPUT){
+			Serial.println("small");
+			while(readResult == nullptr){
+				delayMicroseconds(1);
+			}
+			Serial.println("ok");
+		}else{
+			return;
+		}
+	}
+
+	readBuffer.write(readResult->buffer, readResult->size);
+	free(readResult->buffer);
+
+	delete readResult;
+	readResult = nullptr;
+
+	readJobPending = false;
 }
 
 size_t SourceMP3::generate(int16_t* outBuffer){
@@ -51,168 +115,124 @@ size_t SourceMP3::generate(int16_t* outBuffer){
 		return 0;
 	}
 
-	Profiler.start("MP3 decode");
-	while(output->readAvailable() < BUFFER_SIZE){
-		decode();
+	if(!decoder){
+		Serial.println("Decoder false");
+		return 0;
+	}
+
+	Profiler.start("MP3 read job process");
+	processReadJob();
+	Profiler.end();
+
+	Profiler.start("decode");
+	while(dataBuffer.readAvailable() < BUFFER_SIZE){
+		// Serial.printf("Grabbing, available %ld, taking %ld\n", readBuffer.readAvailable(), fillBuffer.writeAvailable());
+		//Profiler.start("fill read");
+		fillBuffer.writeMove(readBuffer.read(fillBuffer.writeData(), fillBuffer.writeAvailable()));
+		if(fillBuffer.readAvailable() < MP3_DECODE_MIN_INPUT){
+			Serial.println("rezerva");
+			addReadJob();
+			processReadJob();
+			fillBuffer.writeMove(readBuffer.read(fillBuffer.writeData(), fillBuffer.writeAvailable()));
+		}
+		//Profiler.end();
+
+		int frameOffset = MP3FindSyncWord(fillBuffer.readData(), fillBuffer.readAvailable());
+		if(frameOffset == -1){
+			Serial.println("Can't find frame");
+			return 0;
+		}
+		fillBuffer.readMove(frameOffset);
+
+
+		uint frameSize = 0; //adts->frame_length_0_to_1 << 11 | adts->frame_length_2_to_9 << 3 | adts->frame_length_10_to_12;
+
+		uint8_t* data = const_cast<uint8_t*>(fillBuffer.readData());
+		int bytesLeft = fillBuffer.readAvailable();
+		// Serial.printf("Decoding, available %ld\n", fillBuffer.readAvailable());
+		int ret = MP3Decode(decoder, &data, &bytesLeft, reinterpret_cast<short*>(dataBuffer.writeData()), 0);
+		if(ret){
+			Serial.printf("decode error %d, frame size %d B\n", ret, frameSize);
+			fillBuffer.readMove(frameSize);
+			continue;
+		}
+
+		readData += fillBuffer.readAvailable() - bytesLeft;
+		fillBuffer.readMove(fillBuffer.readAvailable() - bytesLeft);
+
+		MP3FrameInfo fi;
+		MP3GetLastFrameInfo(decoder, &fi);
+
+		sampleRate = fi.samprate;
+		channels = fi.nChans;
+		bytesPerSample = 2;
+
+		// Serial.printf("srate %d, channels %d, bps %d\n", sampleRate, channels, fi.bitsPerSample);
+
+		int16_t* samples = (int16_t*) dataBuffer.readData();
+
+		if(channels > 1){
+			for(int i = 0; i < (fi.outputSamps); i += channels){
+				int16_t  v = 0;
+				for(int j = 0; j < channels; j++){
+					samples[i/channels] += samples[i+j] / channels;
+				}
+				samples[i/channels] = v;
+			}
+		}
+
+		dataBuffer.writeMove(fi.outputSamps * bytesPerSample);
 	}
 	Profiler.end();
 
-	memcpy(outBuffer, output->readData(), BUFFER_SIZE);
-	output->readMove(BUFFER_SIZE);
+	size_t size = min((size_t) BUFFER_SIZE, dataBuffer.readAvailable());
+	memcpy(outBuffer, dataBuffer.readData(), size);
+	dataBuffer.readMove(size);
+	size_t samples = size / (NUM_CHANNELS * BYTES_PER_SAMPLE);
 
-	return BUFFER_SAMPLES;
+	for(int i = 0; i < samples; i++){
+		outBuffer[i] *= volume;
+	}
+
+	Profiler.start("AAC read job add");
+	addReadJob();
+	Profiler.end();
+
+	return samples;
 }
 
-void SourceMP3::decode(){
-	// Process remaining samples
-	processSynth();
-
-	// If still couldn't process all of them
-	if(samplesRead != samplesAvailable){
-		return;
-	}
-
-	// Refill input buffer
-	// if(input->available() < 900 /* kolko ide madu */){
-		// input->refill();
-	// }
-
-	//input->moveRead(input->available());
-	if(stream->next_frame){
-		input->moveRead(stream->next_frame - stream->buffer);
-	}else{
-		//input->moveRead(input->available());
-	}
-	input->refill();
-	mad_stream_buffer(stream, input->data(), input->available());
-
-	for(;;){
-		int ret = mad_frame_decode(frame, stream);
-		// input->moveRead(stream->next_frame - stream->buffer);
-
-		if(ret == -1){
-			if(!MAD_RECOVERABLE(stream->error)){
-				break;
-			}
-
-			Serial.printf("Unrecoverable error %d\n", stream->error);
-			continue;
-		}
-
-		mad_synth_frame(synth, frame, nullptr, nullptr);
-		sampleRate = frame->header.samplerate;
-		channels = MAD_NCHANNELS(&frame->header);
-
-		samplesAvailable = synth->pcm.length; // broj samplova
-		samplesRead = 0;
-
-		processSynth();
-	}
+int SourceMP3::available(){
+	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0) return 0;
+	return (file.available() / (channels * bytesPerSample));
 }
 
-void SourceMP3::processSynth(){
-	if(samplesRead == samplesAvailable) return;
-
-	int dataPtr = 0;
-	int i;
-	for(i = samplesRead; i < samplesAvailable && ((i+1) * bytesPerSample * channels) <= output->writeAvailable(); i++){
-		for(int j = 0; j < channels; j++){
-			if(j != 0) continue;
-			reinterpret_cast<int16_t*>(output->writeData())[dataPtr++] = synth->pcm.samples[j][i];
-			Serial.printf("%d\n", synth->pcm.samples[j][i]);
-		}
-	}
-
-	output->writeMove(dataPtr * bytesPerSample);
-	samplesRead = i;
+uint16_t SourceMP3::getDuration(){
+	if(bitrate == 0) return 0;
+	return 8 * dataSize / bitrate;
 }
 
-void SourceMP3::open(const String& path){
-	File f = openUnicodePath(path.c_str());
-	open(f);
+uint16_t SourceMP3::getElapsed(){
+	if(bitrate == 0) return 0;
+	return readData / SAMPLE_RATE;
 }
 
-SourceMP3::SourceMP3(File& file){
-	open(file);
+void SourceMP3::seek(uint16_t time, fs::SeekMode mode){
+	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0) return;
+	size_t offset = time * sampleRate * channels * bytesPerSample;
+	if(offset >= file.size()) return;
+
+	file.seek(offset, mode);
 }
 
-File SourceMP3::openUnicodePath(const char* filepath){
-	size_t len = strlen(filepath) + 1;
-	char* path = static_cast<char*>(malloc(len));
-	memcpy(path, filepath, len);
+void SourceMP3::close(){
 
-	String s_file = filepath;
-	const uint8_t ascii[60] = {
-			//129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148  // UTF8(C3)
-			//                Ä    Å    Æ    Ç         É                                       Ñ                  // CHAR
-			000, 000, 000, 142, 143, 146, 128, 000, 144, 000, 000, 000, 000, 000, 000, 000, 165, 000, 000, 000, // ASCII
-			//149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168
-			//      Ö                             Ü              ß    à                   ä    å    æ         è
-			000, 153, 000, 000, 000, 000, 000, 154, 000, 000, 225, 133, 000, 000, 000, 132, 134, 145, 000, 138,
-			//169, 170, 171, 172. 173. 174. 175, 176, 177, 179, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188
-			//      ê    ë    ì         î    ï         ñ    ò         ô         ö              ù         û    ü
-			000, 136, 137, 141, 000, 140, 139, 000, 164, 149, 000, 147, 000, 148, 000, 000, 151, 000, 150, 129 };
+}
 
-	uint16_t i = 0, j = 0, s = 0;
-	bool f_C3_seen = false;
-
-	if(!s_file.startsWith("/")) s_file = "/" + s_file;
-	while(s_file[i] != 0){                                     // convert UTF8 to ASCII
-		if(s_file[i] == 195){                                   // C3
-			i++;
-			f_C3_seen = true;
-			continue;
-		}
-		path[j] = s_file[i];
-		if(path[j] > 128 && path[j] < 189 && f_C3_seen == true){
-			s = ascii[path[j] - 129];
-			if(s != 0) path[j] = s;                         // found a related ASCII sign
-			f_C3_seen = false;
-		}
-		i++;
-		j++;
-	}
-	path[j] = 0;
-
-	File file;
-	if(SD.exists(path)){
-		file = SD.open(path); // #86
-	}else{
-		file = SD.open(s_file);
-	}
-
-	return file;
+void SourceMP3::setVolume(uint8_t volume){
+	SourceMP3::volume = (float) volume / 255.0f;
 }
 
 const ID3Metadata& SourceMP3::getMetadata() const{
 	return metadata;
 }
 
-void SourceMP3::close(){
-	mad_stream_finish(stream);
-	mad_frame_finish(frame);
-	mad_synth_finish(synth);
-
-	free(stream);
-	free(frame);
-	free(synth);
-
-	delete input;
-	delete output;
-}
-
-int SourceMP3::available(){
-	return file.available();
-}
-
-uint16_t SourceMP3::getDuration(){
-	return 0;
-}
-
-uint16_t SourceMP3::getElapsed(){
-	return 0;
-}
-
-void SourceMP3::seek(uint16_t time, fs::SeekMode mode){
-
-}
