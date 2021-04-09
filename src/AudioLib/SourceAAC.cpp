@@ -232,6 +232,8 @@ void SourceAAC::reload() {
 	seek(0, SeekSet);
 	readBuffer.clear();
 	dataBuffer.clear();
+	fillBuffer.clear();
+	AACFlushCodec(hAACDecoder);
 }
 
 void SourceAAC::setRepeat(bool repeat) {
