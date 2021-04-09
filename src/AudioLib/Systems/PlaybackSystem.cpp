@@ -19,7 +19,7 @@ PlaybackSystem::PlaybackSystem() : audioTask("MixAudio", audioThread, 4 * 1024, 
 								.use_apll = false
 						}, i2s_pin_config, I2S_NUM_0);
 
-	out->setGain(Settings.get().volumeLevel);
+	out->setGain((float) Settings.get().volumeLevel / 255.0f);
 }
 
 bool PlaybackSystem::open(const fs::File& file){
@@ -50,8 +50,13 @@ void PlaybackSystem::audioThread(Task* task){
 
 			delete request;
 		}
-
-		while(system->paused);
+		bool singleStop = true;
+		while(system->paused){
+			if(system->out->isRunning() && singleStop){
+				system->out->stop();
+				singleStop = false;
+			}
+		}
 		if(!task->running) break;
 
 		if(system->out->isRunning()){
@@ -74,7 +79,7 @@ void PlaybackSystem::stop(){
 
 void PlaybackSystem::pause(){
 	paused = true;
-	out->stop();
+//	out->stop();
 }
 
 void PlaybackSystem::resume(){
@@ -95,4 +100,9 @@ uint16_t PlaybackSystem::getElapsed(){
 void PlaybackSystem::setVolume(uint8_t volume){
 	if(!source) return;
 	source->setVolume(volume);
+}
+
+void PlaybackSystem::seek(uint16_t time, fs::SeekMode mode) {
+	if(!source) return;
+	source->seek(time, mode);
 }

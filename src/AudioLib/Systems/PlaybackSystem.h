@@ -37,7 +37,7 @@ public:
 	uint16_t getElapsed();
 
 	void setVolume(uint8_t volume);
-
+	void seek(uint16_t time, fs::SeekMode mode);
 
 private:
 	bool paused = false;
