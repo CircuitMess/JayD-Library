@@ -39,8 +39,11 @@ public:
 	void setVolume(uint8_t volume);
 	void seek(uint16_t time, fs::SeekMode mode);
 
+	void setRepeat(bool repeat = true);
+
 private:
 	bool paused = false;
+	bool repeat = false;
 	Queue queue;
 
 	fs::File file;

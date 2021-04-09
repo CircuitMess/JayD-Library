@@ -83,7 +83,9 @@ void PlaybackSystem::pause(){
 }
 
 void PlaybackSystem::resume(){
-	out->start();
+	if(!out->isRunning()) {
+		out->start();
+	}
 	paused = false;
 }
 
@@ -105,4 +107,8 @@ void PlaybackSystem::setVolume(uint8_t volume){
 void PlaybackSystem::seek(uint16_t time, fs::SeekMode mode) {
 	if(!source) return;
 	source->seek(time, mode);
+}
+
+void PlaybackSystem::setRepeat(bool _repeat) {
+	source->setRepeat(_repeat);
 }
