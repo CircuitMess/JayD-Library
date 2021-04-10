@@ -50,6 +50,7 @@ void PlaybackSystem::audioThread(Task* task){
 
 			delete request;
 		}
+
 		bool singleStop = true;
 		while(system->paused){
 			if(system->out->isRunning() && singleStop){
@@ -57,6 +58,7 @@ void PlaybackSystem::audioThread(Task* task){
 				singleStop = false;
 			}
 		}
+
 		if(!task->running) break;
 
 		if(system->out->isRunning()){
@@ -72,9 +74,9 @@ void PlaybackSystem::start(){
 }
 
 void PlaybackSystem::stop(){
-	out->stop();
 	paused = false;
 	audioTask.stop(true);
+	out->stop();
 }
 
 void PlaybackSystem::pause(){

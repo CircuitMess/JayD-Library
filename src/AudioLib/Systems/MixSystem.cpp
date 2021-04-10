@@ -102,6 +102,7 @@ void MixSystem::start(){
 }
 
 void MixSystem::stop(){
+	audioTask.stop(true);
 	out->stop();
 	running = false;
 }
