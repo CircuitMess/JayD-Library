@@ -8,7 +8,7 @@ public:
 	uint16_t getVu();
 
 protected:
-	void captureInfo(int16_t *outBuffer, size_t readBytes) override;
+	void captureInfo(int16_t *outBuffer, size_t readSamples) override;
 
 private:
 	uint16_t vu = 0;

@@ -7,8 +7,6 @@ SDScheduler::SDScheduler() :jobs(4, sizeof(SDJob*)){
 }
 
 void SDScheduler::addJob(SDJob *job){
-	Serial.println("Added job: ");
-	Serial.println((size_t)job);
 	jobs.send(job);
 }
 
@@ -17,18 +15,8 @@ void SDScheduler::loop(uint micros) {
 		return;
 	}
 	SDJob *request = nullptr;
-	Serial.print("number of jobs: ");
-	Serial.println(jobs.count());
 	while (jobs.count() > 0) {
 		jobs.receive(&request);
-		if(request == nullptr){
-			Serial.println("NULLLPTR");
-			return;
-		}else{
-			Serial.println("doing job:");
-			Serial.println((size_t)request);
-			Serial.flush();
-		}
 		doJob(request);
 		delete request;
 	}
