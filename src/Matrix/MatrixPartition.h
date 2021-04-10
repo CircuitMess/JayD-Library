@@ -26,7 +26,6 @@ protected:
 	uint8_t height;
 
 	uint8_t* buffer;
-	uint8_t* pastBuffer;
 
 	AnimationFrame* animationFrame = nullptr;
 	Animation* animation = nullptr;

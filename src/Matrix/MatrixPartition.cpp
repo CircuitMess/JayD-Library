@@ -2,7 +2,6 @@
 
 MatrixPartition::MatrixPartition(LEDmatrixImpl* matrix, uint8_t width, uint8_t height) : matrix(matrix), width(width), height(height){
 	buffer = static_cast<uint8_t*>(malloc(width * height));
-	pastBuffer = static_cast<uint8_t*>(malloc(width * height));
 }
 
 void MatrixPartition::drawPixel(int x, int y, uint8_t brightness){
