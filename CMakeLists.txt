@@ -44,7 +44,7 @@ include_directories(${ArduinoLibs}/TFT_eSPI)
 include_directories(${ArduinoLibs}/TFT_eSPI/Extensions)
 include_directories(${ArduinoLibs}/FDK-AAC/src)
 
-file(GLOB_RECURSE SOURCES "src/**/*.cpp" "src/**/*.hpp" "src/**/*.h")
+file(GLOB_RECURSE SOURCES "src/**.cpp" "src/**.c" "src/**.hpp" "src/**.h")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
 
