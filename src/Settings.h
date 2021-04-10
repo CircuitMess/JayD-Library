@@ -6,6 +6,7 @@
 struct SettingsData {
 	uint8_t brightnessLevel = 150; //medium brightness
 	uint8_t volumeLevel = 100; //medium volume
+	bool inputTested = false;
 };
 
 class SettingsImpl {
@@ -27,7 +28,6 @@ public:
 
 private:
 	SettingsData data;
-
 };
 
 extern SettingsImpl Settings;
