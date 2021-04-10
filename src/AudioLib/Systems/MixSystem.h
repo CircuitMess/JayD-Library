@@ -48,6 +48,9 @@ public:
 	void setOutInfo(InfoGenerator* outInfoGen);
 	void setChannelInfo(uint8_t channel, InfoGenerator* channelInfoGen);
 
+	void pauseChannel(uint8_t channel);
+	void resumeChannel(uint8_t channel);
+
 private:
 	bool running = false;
 	Queue queue;

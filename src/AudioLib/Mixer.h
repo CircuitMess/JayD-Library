@@ -20,11 +20,15 @@ public:
 	void addSource(Generator* source);
 	uint8_t getMixRatio();
 	void setMixRatio(uint8_t ratio);
-	
+
+	void pauseChannel(uint8_t channel);
+	void resumeChannel(uint8_t channel);
+
 private:
 	std::vector<Generator*> sourceList;
 	std::vector<int16_t*> bufferList;
 	uint8_t mixRatio = 122; //half-half by default, 0 = only first track, 255 = only second track
+	std::vector<bool> pauseList;
 };
 
 
