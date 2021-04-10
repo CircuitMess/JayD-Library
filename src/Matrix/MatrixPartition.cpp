@@ -17,12 +17,18 @@ void MatrixPartition::clear(bool on){
 	}
 }
 
-void MatrixPartition::vu(uint8_t amp){
+void MatrixPartition::vu(uint16_t amp){
 	clear();
-	uint8_t total = ((float) amp / 255.0f) * (float) height;
-	for(int i = height-1; i >= height - total; i--){
+	uint16_t total = ((float) amp / (float)INT16_MAX) * (float) (height*255);
+	for(int i = 0; i < height; i++){
 		for(int j = 0; j < width; j++){
-			drawPixel(j, i, 255);
+			if(total < i*255) {
+				break;
+			}else if(total > (i+1)*255) {
+				drawPixel(j, height - 1 - i, 255);
+			}else{
+				drawPixel(j, height - 1 - i, total - i*255);
+			}
 		}
 	}
 }

@@ -4,7 +4,7 @@
 #include <FS.h>
 #include <vector>
 #include <Loop/LoopListener.h>
-#include <queue>
+#include <Sync/Queue.h>
 
 struct SDResult {
 	uint8_t error;
@@ -22,12 +22,15 @@ struct SDJob {
 
 class SDScheduler : public LoopListener {
 public:
-	void addJob(const SDJob& job);
+	SDScheduler();
+
+	void addJob(SDJob *job);
 	void loop(uint micros) override;
 private:
-	std::queue<SDJob> jobs;
+	Queue jobs;
 
-	void doJob(SDJob& job);
+	void doJob(SDJob* job);
+
 };
 
 extern SDScheduler Sched;
