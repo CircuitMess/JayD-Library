@@ -17,6 +17,7 @@ void SDScheduler::loop(uint micros) {
 	SDJob *request = nullptr;
 	while (jobs.count() > 0) {
 		jobs.receive(&request);
+		if(request == nullptr) return;
 		doJob(request);
 		delete request;
 	}
