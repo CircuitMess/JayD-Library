@@ -39,7 +39,7 @@ size_t Mixer::generate(int16_t *outBuffer){
 	for(uint16_t i = 0; i < BUFFER_SAMPLES*NUM_CHANNELS; i++){
 		int32_t wave = 0;
 		for(uint8_t j = 0; j < sourceList.size(); j++){
-			if(bufferList[j] == nullptr || receivedSamples[j] < i/NUM_CHANNELS ) break;
+			if(bufferList[j] == nullptr || receivedSamples[j] < i/NUM_CHANNELS  || pauseList[j]) break;
 
 			if(sourceList.size() == 2){
 				wave += bufferList[j][i] * (float)((j == 1 ? (float)(mixRatio) : (float)(255.0 - mixRatio))/255.0); //use the mixer if only 2 tracks found
@@ -55,8 +55,8 @@ size_t Mixer::generate(int16_t *outBuffer){
 
 int Mixer::available(){
 	int available = 0;
-	for(uint8_t i = 0; i < sourceList.size(); i++){
-		available = max(available, sourceList[i]->available());
+	for(auto & i : sourceList){
+		available = max(available, i->available());
 	}
 	return available;
 }
@@ -72,6 +72,7 @@ void Mixer::addSource(Generator* generator){
 	}
 
 	bufferList.push_back(buffer);
+	pauseList.push_back(false);
 }
 
 void Mixer::setMixRatio(uint8_t ratio){
@@ -88,4 +89,12 @@ Generator* Mixer::getSource(size_t index){
 
 void Mixer::setSource(size_t index, Generator* source){
 	sourceList[index] = source;
+}
+
+void Mixer::pauseChannel(uint8_t channel) {
+	pauseList[channel] = true;
+}
+
+void Mixer::resumeChannel(uint8_t channel) {
+	pauseList[channel] = false;
 }

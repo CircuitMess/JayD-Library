@@ -244,3 +244,11 @@ void MixSystem::setChannelInfo(uint8_t channel, InfoGenerator *channelInfoGen) {
 	MixRequest* request = new MixRequest({ MixRequest::SET_INFO, channel, 0, (size_t)channelInfoGen });
 	queue.send(&request);
 }
+
+void MixSystem::pauseChannel(uint8_t channel) {
+	mixer->pauseChannel(channel);
+}
+
+void MixSystem::resumeChannel(uint8_t channel) {
+	mixer->resumeChannel(channel);
+}
