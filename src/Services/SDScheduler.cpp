@@ -1,5 +1,6 @@
 #include <SPI.h>
 #include "SDScheduler.h"
+
 SDScheduler Sched;
 
 SDScheduler::SDScheduler() :jobs(4, sizeof(SDJob*)){
@@ -7,18 +8,26 @@ SDScheduler::SDScheduler() :jobs(4, sizeof(SDJob*)){
 }
 
 void SDScheduler::addJob(SDJob *job){
-	jobs.send(job);
+	jobs.send(&job);
 }
 
 void SDScheduler::loop(uint micros) {
 	if (jobs.count() == 0) {
 		return;
 	}
-	SDJob *request = nullptr;
-	while (jobs.count() > 0) {
-		jobs.receive(&request);
-		if(request == nullptr) return;
-		doJob(request);
+
+	SDJob* request = nullptr;
+
+	while(jobs.count() > 0){
+		if(!jobs.receive(&request)){
+			Serial.println("Receive error");
+			return;
+		}
+
+		if(request != nullptr){
+			doJob(request);
+		}
+
 		delete request;
 	}
 }
