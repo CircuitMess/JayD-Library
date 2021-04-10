@@ -6,6 +6,7 @@
 struct SettingsData {
 	uint8_t brightnessLevel = 150; //medium brightness
 	uint8_t volumeLevel = 100; //medium volume
+	bool inputTested = false;
 };
 
 class SettingsImpl {
@@ -14,7 +15,7 @@ public:
 
 	void store();
 
-	SettingsData &get();
+	SettingsData& get();
 
 	/**
 	 * Resets the data (to zeroes). Doesn't store.
@@ -25,17 +26,8 @@ public:
 		return 1;
 	}
 
-	bool isInputTested() const{
-		return inputTested;
-	}
-
-	void setInputTested(bool inputTested){
-		SettingsImpl::inputTested = inputTested;
-	}
-
 private:
 	SettingsData data;
-	bool inputTested = false;
 };
 
 extern SettingsImpl Settings;
