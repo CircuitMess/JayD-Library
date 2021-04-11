@@ -128,20 +128,23 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 	processReadJob();
 	Profiler.end();
 
-	Profiler.start("decode");
+	refill();
+	if(fillBuffer.readAvailable() < AAC_DECODE_MIN_INPUT){
+		// reload if loop
+		return 0;
+	}
+
 	while(dataBuffer.readAvailable() < BUFFER_SIZE){
 		// Serial.printf("Grabbing, available %ld, taking %ld\n", readBuffer.readAvailable(), fillBuffer.writeAvailable());
-		//Profiler.start("fill read");
-		fillBuffer.writeMove(readBuffer.read(fillBuffer.writeData(), fillBuffer.writeAvailable()));
+
+		refill();
 		if(fillBuffer.readAvailable() < AAC_DECODE_MIN_INPUT){
-			Serial.println("rezerva");
 			addReadJob();
 			processReadJob();
-			fillBuffer.writeMove(readBuffer.read(fillBuffer.writeData(), fillBuffer.writeAvailable()));
+			refill();
 		}
-		//Profiler.end();
 
-		ADTSHeader* adts = (ADTSHeader*) fillBuffer.readData();
+		/*ADTSHeader* adts = (ADTSHeader*) fillBuffer.readData();
 		if(adts->syncword_0_to_8 != 0xff || adts->syncword_9_to_12 != 0xf){
 			Serial.println("Incorrect frame, searching...");
 
@@ -152,24 +155,33 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 
 			if(adts->syncword_0_to_8 != 0xff || adts->syncword_9_to_12 != 0xf && (bytesMoved + sizeof(ADTSHeader)) == fillBuffer.readAvailable()){
 				Serial.printf("Can't find frame. searched %lu bytes\n", bytesMoved);
-				return 0;
+				fillBuffer.readMove(bytesMoved);
+				break;
 			}else{
 				Serial.printf("Frame found after %lu bytes\n", bytesMoved);
 			}
 
+			readData += bytesMoved / (NUM_CHANNELS * BYTES_PER_SAMPLE);
 			fillBuffer.readMove(bytesMoved);
-			fillBuffer.writeMove(readBuffer.read(fillBuffer.writeData(), fillBuffer.writeAvailable()));
+			refill();
 		}
 
-		uint frameSize = adts->frame_length_0_to_1 << 11 | adts->frame_length_2_to_9 << 3 | adts->frame_length_10_to_12;
+		if(fillBuffer.readAvailable() < AAC_DECODE_MIN_INPUT){
+			break;
+		}
+
+		size_t frameSize = adts->frame_length_0_to_1 << 11 | adts->frame_length_2_to_9 << 3 | adts->frame_length_10_to_12;*/
 
 		uint8_t* data = const_cast<uint8_t*>(fillBuffer.readData());
 		int bytesLeft = fillBuffer.readAvailable();
 		// Serial.printf("Decoding, available %ld\n", fillBuffer.readAvailable());
 		int ret = AACDecode(hAACDecoder, &data, &bytesLeft, reinterpret_cast<short*>(dataBuffer.writeData()));
 		if(ret){
+			size_t frameSize = fillBuffer.readAvailable() - bytesLeft;
 			Serial.printf("decode error %d, frame size %d B\n", ret, frameSize);
-			fillBuffer.readMove(frameSize);
+			size_t size = min(frameSize, fillBuffer.readAvailable());
+			readData += size / (NUM_CHANNELS * BYTES_PER_SAMPLE);
+			fillBuffer.readMove(1);
 			continue;
 		}
 
@@ -199,8 +211,19 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 	addReadJob();
 	Profiler.end();
 
+	if(samples == 0 && repeat){
+		// reload
+		return generate(outBuffer);
+	}
+
 	readData += samples;
 	return samples;
+}
+
+void SourceAAC::refill(){
+	size_t size = min(fillBuffer.writeAvailable(), readBuffer.readAvailable());
+	size = readBuffer.read(fillBuffer.writeData(), size);
+	fillBuffer.writeMove(size);
 }
 
 int SourceAAC::available(){
@@ -266,3 +289,4 @@ void SourceAAC::resetDecoding() {
 void SourceAAC::setRepeat(bool repeat) {
 	SourceAAC::repeat = repeat;
 }
+

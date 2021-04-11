@@ -94,6 +94,8 @@ void MixSystem::audioThread(Task *task) {
 
 		if (system->out->isRunning()) {
 			system->out->loop(0);
+		}else{
+			system->running = false;
 		}
 	}
 }
@@ -254,6 +256,9 @@ void MixSystem::pauseChannel(uint8_t channel) {
 
 void MixSystem::resumeChannel(uint8_t channel) {
 	mixer->resumeChannel(channel);
+	if(!out->isRunning()){
+		out->start();
+	}
 }
 
 void MixSystem::seekChannel(uint8_t channel, uint16_t time) {
