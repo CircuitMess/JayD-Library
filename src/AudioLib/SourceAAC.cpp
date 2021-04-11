@@ -78,13 +78,27 @@ void SourceAAC::addReadJob(bool full){
 }
 
 void SourceAAC::processReadJob(){
+/*
+	Serial.println("process read job");
+	if(seekReadJob != nullptr){
+		while(seekReadResult == nullptr);
+		Serial.println("seek job done");
+
+		Serial.println("Both jobs done");
+		readResult = seekReadResult;
+		seekReadResult = nullptr;
+		seekReadJob = nullptr; //SDSched deletes this job
+	}
+*/
+
+
 	if(readResult == nullptr){
 		if(readBuffer.readAvailable() + fillBuffer.readAvailable() < AAC_DECODE_MIN_INPUT){
-			Serial.println("small");
+//			Serial.println("small");
 			while(readResult == nullptr){
 				delayMicroseconds(1);
 			}
-			Serial.println("ok");
+//			Serial.println("ok");
 		}else{
 			return;
 		}
@@ -147,7 +161,7 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 			fillBuffer.writeMove(readBuffer.read(fillBuffer.writeData(), fillBuffer.writeAvailable()));
 		}
 
-		uint frameSize = 0; //adts->frame_length_0_to_1 << 11 | adts->frame_length_2_to_9 << 3 | adts->frame_length_10_to_12;
+		uint frameSize = adts->frame_length_0_to_1 << 11 | adts->frame_length_2_to_9 << 3 | adts->frame_length_10_to_12;
 
 		uint8_t* data = const_cast<uint8_t*>(fillBuffer.readData());
 		int bytesLeft = fillBuffer.readAvailable();
@@ -155,15 +169,7 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 		int ret = AACDecode(hAACDecoder, &data, &bytesLeft, reinterpret_cast<short*>(dataBuffer.writeData()));
 		if(ret){
 			Serial.printf("decode error %d, frame size %d B\n", ret, frameSize);
-			if(frameSize == 0){
-				if(repeat){
-					reload();
-				}else {
-					return 0;
-				}
-			}else {
-				fillBuffer.readMove(frameSize);
-			}
+			fillBuffer.readMove(frameSize);
 			continue;
 		}
 
@@ -217,7 +223,19 @@ void SourceAAC::seek(uint16_t time, fs::SeekMode mode){
 	size_t offset = time * sampleRate * channels * bytesPerSample;
 	if(offset >= file.size()) return;
 
+	if(readJobPending) {
+		Serial.println("read job pending");
+		while (readResult == nullptr);
+
+		free(readResult->buffer);
+		delete readResult;
+		readJobPending = false;
+		Serial.println("freed");
+	}
+
 	file.seek(offset, mode);
+	readData = offset / (NUM_CHANNELS * BYTES_PER_SAMPLE);
+	resetDecoding();
 }
 
 void SourceAAC::close(){
@@ -228,15 +246,23 @@ void SourceAAC::setVolume(uint8_t volume){
 	SourceAAC::volume = (float) volume / 255.0f;
 }
 
-void SourceAAC::reload() {
-	seek(0, SeekSet);
+void SourceAAC::resetDecoding() {
 	readBuffer.clear();
 	dataBuffer.clear();
 	fillBuffer.clear();
 	AACFlushCodec(hAACDecoder);
+
+	addReadJob();
+	/*seekReadJob = new SDJob{
+			.type = SDJob::SD_READ,
+			.file = file,
+			.size = AAC_READ_CHUNK,
+			.buffer = static_cast<uint8_t*>(malloc(AAC_READ_CHUNK)),
+			.result = &seekReadResult
+	};
+	Sched.addJob(seekReadJob);*/
 }
 
 void SourceAAC::setRepeat(bool repeat) {
 	SourceAAC::repeat = repeat;
 }
-

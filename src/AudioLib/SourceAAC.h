@@ -83,7 +83,9 @@ private:
 	SDResult* readResult = nullptr;
 	void addReadJob(bool full = false);
 	void processReadJob();
-	void reload();
+	void resetDecoding();
+	SDResult* seekReadResult = nullptr;
+	SDJob *seekReadJob = nullptr;
 
 	bool repeat = false;
 

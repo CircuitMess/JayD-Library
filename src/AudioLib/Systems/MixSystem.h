@@ -14,7 +14,7 @@
 #include "../InfoGenerator.h"
 
 struct MixRequest {
-	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_EFFECT, SET_EFFECT_INTENSITY, SET_INFO } type;
+	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_EFFECT, SET_EFFECT_INTENSITY, SET_INFO, SET_SEEK } type;
 	uint8_t channel;
 	uint8_t slot;
 	size_t value;
@@ -51,6 +51,8 @@ public:
 	void pauseChannel(uint8_t channel);
 	void resumeChannel(uint8_t channel);
 
+	void seekChannel(uint8_t channel, uint16_t time);
+
 private:
 	bool running = false;
 	Queue queue;
@@ -71,6 +73,7 @@ private:
 	void _setEffect(uint8_t channel, uint8_t slot, EffectType type);
 	void _setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intensity);
 	void _setInfoGenerator(uint8_t channel, InfoGenerator* generator);
+	void _seekChannel(uint8_t channel, uint16_t time);
 
 	static Effect* (* getEffect[EffectType::COUNT])();
 
