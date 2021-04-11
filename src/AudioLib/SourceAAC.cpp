@@ -130,6 +130,7 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 
 	refill();
 	if(fillBuffer.readAvailable() < AAC_DECODE_MIN_INPUT){
+		seek(0, SeekSet);
 		// reload if loop
 		return 0;
 	}
@@ -212,7 +213,7 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 	Profiler.end();
 
 	if(samples == 0 && repeat){
-		// reload
+		seek(0, SeekSet);
 		return generate(outBuffer);
 	}
 
@@ -252,6 +253,7 @@ void SourceAAC::seek(uint16_t time, fs::SeekMode mode){
 
 		free(readResult->buffer);
 		delete readResult;
+		readResult = nullptr;
 		readJobPending = false;
 		Serial.println("freed");
 	}

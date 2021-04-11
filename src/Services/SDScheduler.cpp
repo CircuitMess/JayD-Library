@@ -3,7 +3,7 @@
 
 SDScheduler Sched;
 
-SDScheduler::SDScheduler() :jobs(4, sizeof(SDJob*)){
+SDScheduler::SDScheduler() :jobs(8, sizeof(SDJob*)){
 
 }
 
