@@ -76,6 +76,7 @@ public:
 
 	void loop(uint _time) override;
 
+	void setHoldTime(uint32_t holdTime);
 
 private:
 
@@ -106,6 +107,8 @@ private:
 	uint32_t currentTime = 0;
 	uint32_t encoderTime = 0;
 	int8_t tempEncValue[7] = {0};
+
+	uint32_t holdTime = 0;
 
 };
 

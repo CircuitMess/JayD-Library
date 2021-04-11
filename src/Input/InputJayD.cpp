@@ -246,7 +246,7 @@ void InputJayD::loop(uint _time){
 	buttonHoldCheck();
 
 	currentTime = millis();
-	if(currentTime - encoderTime >= 100){
+	if(currentTime - encoderTime >= holdTime){
 		for(int i = 0; i < 7; i++){
 			if(tempEncValue[i] != 0){
 				if(encMovedCallbacks[i]){
@@ -262,6 +262,10 @@ void InputJayD::loop(uint _time){
 		}
 		encoderTime = currentTime;
 	}
+}
+
+void InputJayD::setHoldTime(uint32_t holdTime){
+	InputJayD::holdTime = holdTime;
 }
 
 void JayDInputListener::buttonPress(uint8_t id){ }
