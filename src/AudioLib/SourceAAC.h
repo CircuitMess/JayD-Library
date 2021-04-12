@@ -38,7 +38,7 @@ private:
 	uint32_t bitrate = 0;
 
 	size_t dataSize = 0;
-	size_t readData = 0;
+	size_t movedBytes = 0;
 
 	float volume = 1.0f;
 
@@ -84,7 +84,9 @@ private:
 	SDResult* readResult = nullptr;
 	void addReadJob(bool full = false);
 	void processReadJob();
-	void reload();
+	void resetDecoding();
+	SDResult* seekReadResult = nullptr;
+	SDJob *seekReadJob = nullptr;
 
 	bool repeat = false;
 

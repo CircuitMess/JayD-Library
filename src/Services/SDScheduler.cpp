@@ -3,7 +3,7 @@
 
 SDScheduler Sched;
 
-SDScheduler::SDScheduler() :jobs(4, sizeof(SDJob*)){
+SDScheduler::SDScheduler() :jobs(8, sizeof(SDJob*)){
 
 }
 
@@ -34,12 +34,16 @@ void SDScheduler::loop(uint micros) {
 
 void SDScheduler::doJob(SDJob* job){
 	SPI.setFrequency(60000000);
-
-	size_t size = job->type == SDJob::SD_READ
-			? job->file.read(job->buffer, job->size)
-			: job->file.write(job->buffer, job->size);
-
+	if(job->type == SDJob::SD_SEEK){
+		job->file.seek(job->size);
+		*job->result = nullptr;
+		return;
+	}
 	SDResult* result = new SDResult();
+	size_t size = job->type == SDJob::SD_READ
+				  ? job->file.read(job->buffer, job->size)
+				  : job->file.write(job->buffer, job->size);
+
 	result->error = 0;
 	result->buffer = job->buffer;
 	result->size = size;
