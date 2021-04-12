@@ -19,9 +19,6 @@ Mixer::~Mixer()
 	for(int16_t* buffer : bufferList){
 		free(buffer);
 	}
-	for(auto generator : sourceList){
-		delete generator;
-	}
 }
 
 size_t Mixer::generate(int16_t *outBuffer){

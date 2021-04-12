@@ -18,6 +18,8 @@ SourceAAC::SourceAAC(fs::File file) : SourceAAC(){
 }
 
 void SourceAAC::open(fs::File file){
+	close();
+
 	this->file = file;
 	channels = sampleRate = bytesPerSample = bitrate = 0;
 	readBuffer.clear();
@@ -35,15 +37,34 @@ void SourceAAC::open(fs::File file){
 	if(hAACDecoder == nullptr){
 		Serial.println("Decoder construct fail");
 
-	}else{
-		Serial.println("Decoder constructed");
 	}
 
 	addReadJob(true);
 }
 
-SourceAAC::~SourceAAC(){
+void SourceAAC::close(){
+	if(readJobPending){
+		while(readResult == nullptr){
+			delayMicroseconds(1);
+		}
 
+		free(readResult->buffer);
+		delete readResult;
+	}
+
+	channels = sampleRate = bytesPerSample = bitrate = readData = 0;
+	readBuffer.clear();
+	dataBuffer.clear();
+	fillBuffer.clear();
+
+	if(hAACDecoder){
+		AACFreeDecoder(hAACDecoder);
+		hAACDecoder = nullptr;
+	}
+}
+
+SourceAAC::~SourceAAC(){
+	close();
 }
 
 void SourceAAC::addReadJob(bool full){
@@ -79,27 +100,11 @@ void SourceAAC::addReadJob(bool full){
 }
 
 void SourceAAC::processReadJob(){
-/*
-	Serial.println("process read job");
-	if(seekReadJob != nullptr){
-		while(seekReadResult == nullptr);
-		Serial.println("seek job done");
-
-		Serial.println("Both jobs done");
-		readResult = seekReadResult;
-		seekReadResult = nullptr;
-		seekReadJob = nullptr; //SDSched deletes this job
-	}
-*/
-
-
 	if(readResult == nullptr){
 		if(readBuffer.readAvailable() + fillBuffer.readAvailable() < AAC_DECODE_MIN_INPUT){
-//			Serial.println("small");
 			while(readResult == nullptr){
 				delayMicroseconds(1);
 			}
-//			Serial.println("ok");
 		}else{
 			return;
 		}
@@ -267,10 +272,6 @@ void SourceAAC::seek(uint16_t time, fs::SeekMode mode){
 	resetDecoding();
 }
 
-void SourceAAC::close(){
-
-}
-
 void SourceAAC::setVolume(uint8_t volume){
 	SourceAAC::volume = (float) volume / 255.0f;
 }
@@ -282,14 +283,6 @@ void SourceAAC::resetDecoding() {
 	AACFlushCodec(hAACDecoder);
 
 	addReadJob();
-	/*seekReadJob = new SDJob{
-			.type = SDJob::SD_READ,
-			.file = file,
-			.size = AAC_READ_CHUNK,
-			.buffer = static_cast<uint8_t*>(malloc(AAC_READ_CHUNK)),
-			.result = &seekReadResult
-	};
-	Sched.addJob(seekReadJob);*/
 }
 
 void SourceAAC::setRepeat(bool repeat) {
