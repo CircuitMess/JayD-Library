@@ -294,6 +294,8 @@ void MixSystem::seekChannel(uint8_t channel, uint16_t time) {
 
 void MixSystem::_seekChannel(uint8_t channel, uint16_t time) {
 	if (channel > 1) return;
-	i2s_zero_dma_buffer((i2s_port_t)0);
+	if(out->isRunning()) {
+		i2s_zero_dma_buffer((i2s_port_t) 0);
+	}
 	source[channel]->seek(time, SeekSet);
 }
