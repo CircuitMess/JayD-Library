@@ -51,6 +51,13 @@ void MatrixManager::clear(bool on){
 }
 
 void MatrixManager::playRandom(){
+	if(unusedIdleAnimations.empty()){
+		usedIdleAnimations.clear();
+		for(uint8_t i = 1; i <= idleAnims; i++){
+			unusedIdleAnimations.push_back(i);
+		}
+	}
+
 	uint8_t index = random(unusedIdleAnimations.size());
 	uint8_t animIndex = unusedIdleAnimations[index];
 	unusedIdleAnimations.erase(unusedIdleAnimations.begin() + index);
