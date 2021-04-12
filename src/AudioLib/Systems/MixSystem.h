@@ -24,6 +24,7 @@ class MixSystem {
 public:
 	MixSystem();
 	MixSystem(const fs::File& f1, const fs::File& f2);
+	virtual ~MixSystem();
 
 	bool open(uint8_t channel, const fs::File& file);
 

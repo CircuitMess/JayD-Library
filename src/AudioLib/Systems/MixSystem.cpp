@@ -40,6 +40,25 @@ MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 4 * 1024, this), que
 	out->setSource(mixer);
 }
 
+MixSystem::~MixSystem(){
+	stop();
+	delete out;
+	delete mixer;
+
+	for(int i = 0; i < 2; i++){
+		for(int j = 0; j < 3; j++){
+			delete effector[i]->getEffect(j);
+		}
+
+		delete effector[i];
+		delete speed[i];
+
+		if(source[i]){
+			delete source[i];
+		}
+	}
+}
+
 bool MixSystem::open(uint8_t c, const fs::File& file){
 	this->file[c] = file;
 	if(!file) return false;
