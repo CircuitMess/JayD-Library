@@ -19,7 +19,7 @@ SourceAAC::SourceAAC(fs::File file) : SourceAAC(){
 
 void SourceAAC::open(fs::File file){
 	this->file = file;
-	channels = sampleRate = bytesPerSample = bitrate = readData = 0;
+	channels = sampleRate = bytesPerSample = bitrate = 0;
 	readBuffer.clear();
 	dataBuffer.clear();
 
@@ -29,6 +29,7 @@ void SourceAAC::open(fs::File file){
 
 	dataSize = file.size();
 	bitrate = 128000;
+	bytesPerSample = 2;
 
 	hAACDecoder = AACInitDecoder();
 	if(hAACDecoder == nullptr){
@@ -181,11 +182,11 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 			size_t frameSize = fillBuffer.readAvailable() - bytesLeft;
 			Serial.printf("decode error %d, frame size %d B\n", ret, frameSize);
 			size_t size = min(frameSize, fillBuffer.readAvailable());
-			readData += size / (NUM_CHANNELS * BYTES_PER_SAMPLE);
+			movedBytes++;
 			fillBuffer.readMove(1);
 			continue;
 		}
-
+		movedBytes += fillBuffer.readAvailable() - bytesLeft;
 		fillBuffer.readMove(fillBuffer.readAvailable() - bytesLeft);
 
 		AACFrameInfo fi;
@@ -217,7 +218,6 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 		return generate(outBuffer);
 	}
 
-	readData += samples;
 	return samples;
 }
 
@@ -239,27 +239,31 @@ uint16_t SourceAAC::getDuration(){
 
 uint16_t SourceAAC::getElapsed(){
 	if(bitrate == 0) return 0;
-	return readData / SAMPLE_RATE;
+	return 8 * movedBytes / bitrate;
 }
 
 void SourceAAC::seek(uint16_t time, fs::SeekMode mode){
-	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0) return;
-	size_t offset = time * sampleRate * channels * bytesPerSample;
-	if(offset >= file.size()) return;
+	size_t offset = time * bitrate / 8;
+	if(offset >= file.size()){
+		return;
+	}
 
-	if(readJobPending) {
-		Serial.println("read job pending");
-		while (readResult == nullptr);
+	if(readJobPending){
+		while (readResult == nullptr)delayMicroseconds(1);
 
 		free(readResult->buffer);
 		delete readResult;
 		readResult = nullptr;
 		readJobPending = false;
-		Serial.println("freed");
 	}
-
-	file.seek(offset, mode);
-	readData = offset / (NUM_CHANNELS * BYTES_PER_SAMPLE);
+	Sched.addJob(new SDJob{
+			.type = SDJob::SD_SEEK,
+			.file = file,
+			.size = offset,
+			.buffer = nullptr,
+			.result = &readResult
+	});
+	movedBytes = offset;
 	resetDecoding();
 }
 
