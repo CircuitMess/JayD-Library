@@ -18,11 +18,9 @@ SourceAAC::SourceAAC(fs::File file) : SourceAAC(){
 }
 
 void SourceAAC::open(fs::File file){
-	this->file = file;
-	channels = sampleRate = bytesPerSample = bitrate = readData = 0;
-	readBuffer.clear();
-	dataBuffer.clear();
+	close();
 
+	this->file = file;
 	if(!file){
 		return;
 	}
@@ -34,15 +32,34 @@ void SourceAAC::open(fs::File file){
 	if(hAACDecoder == nullptr){
 		Serial.println("Decoder construct fail");
 
-	}else{
-		Serial.println("Decoder constructed");
 	}
 
 	addReadJob(true);
 }
 
-SourceAAC::~SourceAAC(){
+void SourceAAC::close(){
+	if(readJobPending){
+		while(readResult == nullptr){
+			delayMicroseconds(1);
+		}
 
+		free(readResult->buffer);
+		delete readResult;
+	}
+
+	channels = sampleRate = bytesPerSample = bitrate = readData = 0;
+	readBuffer.clear();
+	dataBuffer.clear();
+	fillBuffer.clear();
+
+	if(hAACDecoder){
+		AACFreeDecoder(hAACDecoder);
+		hAACDecoder = nullptr;
+	}
+}
+
+SourceAAC::~SourceAAC(){
+	close();
 }
 
 void SourceAAC::addReadJob(bool full){
@@ -233,10 +250,6 @@ void SourceAAC::seek(uint16_t time, fs::SeekMode mode){
 	if(offset >= file.size()) return;
 
 	file.seek(offset, mode);
-}
-
-void SourceAAC::close(){
-
 }
 
 void SourceAAC::setVolume(uint8_t volume){
