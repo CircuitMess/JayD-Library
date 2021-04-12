@@ -19,8 +19,21 @@ public:
 	void push();
 	void stopAnimation();
 	void clear(bool on = false);
-protected:
+
+	void startRandom();
+	void stopRandom();
+
+private:
 	LEDmatrixImpl* ledmatrix;
+
+	static const uint8_t idleAnims = 20;
+	bool playingRandom = false;
+	std::vector<uint> usedIdleAnimations;
+	std::vector<uint> unusedIdleAnimations;
+	void playRandom();
+
+	static const char* PartitionNames[4];
+	MatrixPartition* partitions[4];
 };
 
 
