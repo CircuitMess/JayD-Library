@@ -4,6 +4,7 @@
 #include "../Effects/HighPass.h"
 #include "../Effects/Reverb.h"
 #include "../Effects/BitCrusher.h"
+#include "../../Settings.h"
 
 MixSystem::MixSystem(const fs::File &f1, const fs::File &f2) : MixSystem() {
 	open(0, f1);
@@ -35,7 +36,7 @@ MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 4 * 1024, this), que
 								.use_apll = false
 						}, i2s_pin_config, I2S_NUM_0);
 
-	out->setGain(0.05);
+	out->setGain((float) Settings.get().volumeLevel / 255.0f);
 	out->setSource(mixer);
 }
 
