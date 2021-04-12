@@ -52,7 +52,7 @@ void SourceAAC::close(){
 		delete readResult;
 	}
 
-	channels = sampleRate = bytesPerSample = bitrate = readData = 0;
+	channels = sampleRate = bytesPerSample = bitrate = 0;
 	readBuffer.clear();
 	dataBuffer.clear();
 	fillBuffer.clear();
