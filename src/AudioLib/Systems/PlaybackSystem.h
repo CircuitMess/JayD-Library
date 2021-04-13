@@ -14,7 +14,7 @@
 
 struct PlaybackRequest {
 	enum { SEEK } type;
-	uint8_t value;
+	size_t value;
 };
 
 class PlaybackSystem {
@@ -37,12 +37,12 @@ public:
 	uint16_t getElapsed();
 
 	void setVolume(uint8_t volume);
-	void seek(uint16_t time, fs::SeekMode mode);
+	void seek(uint16_t time);
 
 	void setRepeat(bool repeat = true);
 
 private:
-	bool paused = false;
+	bool running = false;
 	bool repeat = false;
 	Queue queue;
 
@@ -51,6 +51,7 @@ private:
 	SourceAAC* source = nullptr;
 	OutputI2S* out;
 
+	void _seek(uint16_t time);
 };
 
 #endif //JAYD_LIBRARY_PLAYBACKSYSTEM_H

@@ -45,50 +45,49 @@ void PlaybackSystem::audioThread(Task* task){
 			system->queue.receive(&request);
 
 			switch(request->type){
+				case PlaybackRequest::SEEK:
+					system->_seek(request->value);
+					break;
 
 			}
 
 			delete request;
 		}
-
-		bool singleStop = true;
-		while(system->paused){
-			if(system->out->isRunning() && singleStop){
+		if(!system->running){
+			if(system->out->isRunning()){
 				system->out->stop();
-				singleStop = false;
 			}
-		}
-
-		if(!task->running) break;
-
-		if(system->out->isRunning()){
-			system->out->loop(0);
+			vTaskDelay(1);
+			continue;
+		}else{
+			if(!system->out->isRunning()){
+				system->out->start();
+			}
+			if (system->out->isRunning()) {
+				system->out->loop(0);
+			}
 		}
 	}
 }
 
 void PlaybackSystem::start(){
-	paused = false;
+	running = true;
 	out->start();
 	audioTask.start(1, 0);
 }
 
 void PlaybackSystem::stop(){
-	paused = false;
+	running = false;
 	audioTask.stop(true);
 	out->stop();
 }
 
 void PlaybackSystem::pause(){
-	paused = true;
-//	out->stop();
+	running = false;
 }
 
 void PlaybackSystem::resume(){
-	if(!out->isRunning()) {
-		out->start();
-	}
-	paused = false;
+	running = true;
 }
 
 uint16_t PlaybackSystem::getDuration(){
@@ -106,11 +105,24 @@ void PlaybackSystem::setVolume(uint8_t volume){
 	source->setVolume(volume);
 }
 
-void PlaybackSystem::seek(uint16_t time, fs::SeekMode mode) {
-	if(!source) return;
-	source->seek(time, mode);
+void PlaybackSystem::seek(uint16_t time) {
+	if (!out->isRunning()) {
+		_seek(time);
+		return;
+	}
+
+	if (queue.count() == queue.getQueueSize()) return;
+	PlaybackRequest *request = new PlaybackRequest({PlaybackRequest::SEEK, time});
+	queue.send(&request);
 }
 
 void PlaybackSystem::setRepeat(bool _repeat) {
 	source->setRepeat(_repeat);
+}
+
+void PlaybackSystem::_seek(uint16_t time) {
+	if(out->isRunning()) {
+		i2s_zero_dma_buffer((i2s_port_t) 0);
+	}
+	source->seek(time, SeekSet);
 }
