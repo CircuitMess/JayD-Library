@@ -22,6 +22,13 @@ PlaybackSystem::PlaybackSystem() : audioTask("MixAudio", audioThread, 4 * 1024, 
 	out->setGain((float) Settings.get().volumeLevel / 255.0f);
 }
 
+PlaybackSystem::~PlaybackSystem(){
+	stop();
+	Sched.loop(0);
+	delete out;
+	delete source;
+}
+
 bool PlaybackSystem::open(const fs::File& file){
 	this->file = file;
 	if(!file) return false;
@@ -71,15 +78,20 @@ void PlaybackSystem::audioThread(Task* task){
 }
 
 void PlaybackSystem::start(){
+	if(running) return;
 	running = true;
 	out->start();
 	audioTask.start(1, 0);
 }
 
 void PlaybackSystem::stop(){
-	running = false;
+	if(!running){
+		Serial.println("stop out");
+		return;
+	}
 	audioTask.stop(true);
 	out->stop();
+	running = false;
 }
 
 void PlaybackSystem::pause(){

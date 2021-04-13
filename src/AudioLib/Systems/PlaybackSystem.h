@@ -21,6 +21,7 @@ class PlaybackSystem {
 public:
 	PlaybackSystem();
 	PlaybackSystem(const fs::File& f);
+	virtual ~PlaybackSystem();
 
 	bool open(const fs::File& file);
 
