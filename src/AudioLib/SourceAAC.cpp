@@ -24,6 +24,7 @@ void SourceAAC::open(fs::File file){
 	channels = sampleRate = bytesPerSample = bitrate = movedBytes = 0;
 	readBuffer.clear();
 	dataBuffer.clear();
+	fillBuffer.clear();
 
 	if(!file){
 		return;
