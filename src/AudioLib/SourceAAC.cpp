@@ -136,9 +136,13 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 
 	refill();
 	if(fillBuffer.readAvailable() < AAC_DECODE_MIN_INPUT){
-		seek(0, SeekSet);
-		// reload if loop
-		return 0;
+		if(repeat){
+			seek(0, SeekSet);
+			processReadJob();
+			refill();
+		}else{
+			return 0;
+		}
 	}
 
 	while(dataBuffer.readAvailable() < BUFFER_SIZE){
@@ -214,13 +218,13 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 		outBuffer[i] *= volume;
 	}
 
-	Profiler.start("AAC read job add");
-	addReadJob();
-	Profiler.end();
-
-	if(samples == 0 && repeat){
-		seek(0, SeekSet);
-		return generate(outBuffer);
+	if(samples == 0){
+		if(repeat){
+			seek(0, SeekSet);
+			return generate(outBuffer);
+		}
+	}else{
+		addReadJob();
 	}
 
 	return samples;
