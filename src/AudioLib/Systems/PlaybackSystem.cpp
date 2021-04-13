@@ -60,46 +60,29 @@ void PlaybackSystem::audioThread(Task* task){
 
 			delete request;
 		}
-		if(!system->running){
-			if(system->out->isRunning()){
-				system->out->stop();
-			}
-			vTaskDelay(1);
-			continue;
-		}else{
-			if(!system->out->isRunning()){
-				system->out->start();
-			}
-			if (system->out->isRunning()) {
-				system->out->loop(0);
-			}
+
+		if(!task->running) break;
+
+		if(system->out->isRunning()){
+			system->out->loop(0);
 		}
 	}
 }
 
 void PlaybackSystem::start(){
 	if(running) return;
+
 	running = true;
 	out->start();
 	audioTask.start(1, 0);
 }
 
 void PlaybackSystem::stop(){
-	if(!running){
-		Serial.println("stop out");
-		return;
-	}
+	if(!running) return;
+
 	audioTask.stop(true);
 	out->stop();
 	running = false;
-}
-
-void PlaybackSystem::pause(){
-	running = false;
-}
-
-void PlaybackSystem::resume(){
-	running = true;
 }
 
 uint16_t PlaybackSystem::getDuration(){

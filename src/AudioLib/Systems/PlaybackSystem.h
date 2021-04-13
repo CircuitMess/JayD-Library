@@ -31,9 +31,6 @@ public:
 	void start();
 	void stop();
 
-	void pause();
-	void resume();
-
 	uint16_t getDuration();
 	uint16_t getElapsed();
 
