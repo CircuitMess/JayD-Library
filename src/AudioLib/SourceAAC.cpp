@@ -21,7 +21,7 @@ void SourceAAC::open(fs::File file){
 	close();
 
 	this->file = file;
-	channels = sampleRate = bytesPerSample = bitrate = 0;
+	channels = sampleRate = bytesPerSample = bitrate = movedBytes = 0;
 	readBuffer.clear();
 	dataBuffer.clear();
 
@@ -52,7 +52,7 @@ void SourceAAC::close(){
 		delete readResult;
 	}
 
-	channels = sampleRate = bytesPerSample = bitrate = 0;
+	channels = sampleRate = bytesPerSample = bitrate = movedBytes = 0;
 	readBuffer.clear();
 	dataBuffer.clear();
 	fillBuffer.clear();
@@ -64,7 +64,7 @@ void SourceAAC::close(){
 }
 
 SourceAAC::~SourceAAC(){
-	close();
+	SourceAAC::close();
 }
 
 void SourceAAC::addReadJob(bool full){
@@ -203,7 +203,6 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 
 		sampleRate = fi.sampRateOut;
 		channels = fi.nChans;
-		bytesPerSample = 2;
 
 		dataBuffer.writeMove(fi.outputSamps * channels * bytesPerSample);
 	}
@@ -258,7 +257,9 @@ void SourceAAC::seek(uint16_t time, fs::SeekMode mode){
 	}
 
 	if(readJobPending){
-		while (readResult == nullptr)delayMicroseconds(1);
+		while (readResult == nullptr){
+			delayMicroseconds(1);
+		}
 
 		free(readResult->buffer);
 		delete readResult;

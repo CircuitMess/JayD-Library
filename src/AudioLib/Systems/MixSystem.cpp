@@ -42,6 +42,7 @@ MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 4 * 1024, this), que
 
 MixSystem::~MixSystem(){
 	stop();
+	Sched.loop(0);
 	delete out;
 	delete mixer;
 
@@ -53,9 +54,7 @@ MixSystem::~MixSystem(){
 		delete effector[i];
 		delete speed[i];
 
-		if(source[i]){
-			delete source[i];
-		}
+		delete source[i];
 	}
 }
 
@@ -127,6 +126,7 @@ void MixSystem::start(){
 }
 
 void MixSystem::stop(){
+	audioTask.stop(true);
 	out->stop();
 	running = false;
 }
