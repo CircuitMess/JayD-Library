@@ -4,6 +4,8 @@
 
 #include <Util/Task.h>
 #include "../OutputI2S.h"
+#include "../OutputFS.h"
+#include "../OutputSplitter.h"
 #include "../SpeedModifier.h"
 #include "../EffectProcessor.h"
 #include "../Mixer.h"
@@ -14,7 +16,7 @@
 #include "../InfoGenerator.h"
 
 struct MixRequest {
-	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_EFFECT, SET_EFFECT_INTENSITY, SET_INFO, SET_SEEK } type;
+	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_EFFECT, SET_EFFECT_INTENSITY, SET_INFO, SET_SEEK, RECORD } type;
 	uint8_t channel;
 	uint8_t slot;
 	size_t value;
@@ -25,6 +27,8 @@ public:
 	MixSystem();
 	MixSystem(const fs::File& f1, const fs::File& f2);
 	virtual ~MixSystem();
+
+	constexpr static const char* const recordPath = "/Recording.aac";
 
 	bool open(uint8_t channel, const fs::File& file);
 
@@ -54,17 +58,24 @@ public:
 
 	void seekChannel(uint8_t channel, uint16_t time);
 
+	void startRecording();
+	void stopRecording();
+	bool isRecording();
+
 private:
 	bool running = false;
 	Queue queue;
 
 	fs::File file[2];
+	fs::File fileOut;
 
 	SourceAAC* source[2] = { nullptr };
 
 	EffectProcessor* effector[2];
 	Mixer* mixer;
-	OutputI2S* out;
+	OutputI2S* i2s;
+	OutputFS* fsOut;
+	OutputSplitter* out;
 
 	SpeedModifier* speed[2] = { nullptr };
 
@@ -75,6 +86,8 @@ private:
 	void _setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intensity);
 	void _setInfoGenerator(uint8_t channel, InfoGenerator* generator);
 	void _seekChannel(uint8_t channel, uint16_t time);
+	void _startRecording();
+	void _stopRecording();
 
 	static Effect* (* getEffect[EffectType::COUNT])();
 

@@ -1,3 +1,4 @@
+#include <SD.h>
 #include "MixSystem.h"
 #include "../../JayD.hpp"
 #include "../Effects/LowPass.h"
@@ -11,7 +12,7 @@ MixSystem::MixSystem(const fs::File& f1, const fs::File& f2) : MixSystem(){
 	open(1, f2);
 }
 
-MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 4 * 1024, this), queue(6, sizeof(MixRequest*)){
+MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 8 * 1024, this), queue(6, sizeof(MixRequest*)){
 	mixer = new Mixer();
 
 	for(int i = 0; i < 2; i++){
@@ -24,7 +25,7 @@ MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 4 * 1024, this), que
 		mixer->addSource(effector[i]);
 	}
 
-	out = new OutputI2S({
+	i2s = new OutputI2S({
 								.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_TX),
 								.sample_rate = 44100,
 								.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
@@ -36,14 +37,21 @@ MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 4 * 1024, this), que
 								.use_apll = false
 						}, i2s_pin_config, I2S_NUM_0);
 
-	out->setGain((float) Settings.get().volumeLevel / 255.0f);
-	out->setSource(mixer);
+	i2s->setGain((float) Settings.get().volumeLevel / 255.0f);
+	i2s->setSource(mixer);
+
+	fsOut = new OutputFS();
+
+	out = new OutputSplitter();
+	out->addOutput(i2s);
 }
 
 MixSystem::~MixSystem(){
 	stop();
 	Sched.loop(0);
 	delete out;
+	delete fsOut;
+	delete i2s;
 	delete mixer;
 
 	for(int i = 0; i < 2; i++){
@@ -106,6 +114,14 @@ void MixSystem::audioThread(Task* task){
 				case MixRequest::SET_SEEK:
 					system->_seekChannel(request->channel, (uint16_t) request->value);
 					break;
+				case MixRequest::RECORD:
+					if(request->value == system->isRecording()) break;
+					if(request->value){
+						system->_startRecording();
+					}else{
+						system->_stopRecording();
+					}
+					break;
 			}
 
 			delete request;
@@ -117,6 +133,8 @@ void MixSystem::audioThread(Task* task){
 			system->running = false;
 		}
 	}
+
+	system->fsOut->stop();
 }
 
 void MixSystem::start(){
@@ -126,7 +144,15 @@ void MixSystem::start(){
 }
 
 void MixSystem::stop(){
-	audioTask.stop(true);
+	audioTask.stop();
+
+	while(!audioTask.isStopped()){
+		Sched.loop(0);
+	}
+
+	_stopRecording();
+	fileOut.close();
+
 	out->stop();
 	running = false;
 }
@@ -294,8 +320,59 @@ void MixSystem::seekChannel(uint8_t channel, uint16_t time){
 
 void MixSystem::_seekChannel(uint8_t channel, uint16_t time){
 	if(channel > 1) return;
-	if(out->isRunning()){
+	if(i2s->isRunning()){
 		i2s_zero_dma_buffer((i2s_port_t) 0);
 	}
 	source[channel]->seek(time, SeekSet);
+}
+
+bool MixSystem::isRecording(){
+	return out->getOutput(1) != nullptr;
+}
+
+void MixSystem::startRecording(){
+	if(!out->isRunning()){
+		_startRecording();
+		return;
+	}
+
+	MixRequest* request = new MixRequest({ MixRequest::RECORD, 0, 0, 1 });
+	queue.send(&request);
+}
+
+void MixSystem::stopRecording(){
+	if(!out->isRunning()){
+		_stopRecording();
+		return;
+	}
+
+	MixRequest* request = new MixRequest({ MixRequest::RECORD, 0, 0, 0 });
+	queue.send(&request);
+}
+
+void MixSystem::_startRecording(){
+	if(isRecording()) return;
+
+	fileOut = SD.open(recordPath, "w");
+	if(!fileOut){
+		Serial.printf("Failed opening %s for writing\n", recordPath);
+		return;
+	}
+
+	fsOut->setFile(fileOut);
+
+	out->addOutput(fsOut);
+
+	if(out->isRunning()){
+		fsOut->start();
+	}
+}
+
+void MixSystem::_stopRecording(){
+	if(!isRecording()) return;
+
+	out->removeOutput(1);
+
+	fsOut->stop();
+	fileOut.close();
 }
