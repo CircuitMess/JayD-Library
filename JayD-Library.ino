@@ -8,7 +8,10 @@
 #include "src/PerfMon.h"
 #include "src/Services/SDScheduler.h"
 #include "src/Input/InputJayD.h"
+#include "src/Settings.h"
+#include "src/AudioLib/Systems/MixSystem.h"
 
+#include <Display/Display.h>
 #include <SPI.h>
 #include <Devices/LEDmatrix/LEDmatrix.h>
 #include <Devices/SerialFlash/SerialFlashFileAdapter.h>
@@ -16,20 +19,21 @@
 #include <WiFi.h>
 #include <Util/Task.h>
 #include <esp_partition.h>
+#include <SPIFFS.h>
 
-LEDmatrixImpl LEDMatrix;
+Display display(160, 128, -1, -1);
 
 int pixel = 0;
 
 void lightPixel(int pixel, bool turnoff = false){
 	if(turnoff){
-		LEDMatrix.drawPixel(::pixel, 0);
+		LEDmatrix.drawPixel(::pixel, 0);
 	}
 
 	pixel = max(pixel, 0);
 	pixel = min(pixel, 16 * 9 - 1);
 
-	LEDMatrix.drawPixel(pixel, 255);
+	LEDmatrix.drawPixel(pixel, 255);
 
 	::pixel = pixel;
 }
@@ -58,57 +62,14 @@ void listSD(){
 	root.close();
 }
 
-SourceWAV* wav1;
-SourceWAV* wav2;
-Mixer* mixer;
-
-OutputI2S* i2s;
-
-File f1, f2;
-
-void mainThread(Task* t){
-	if(!(f1 = SD.open("/Walter.wav"))){
-		Serial.println("f1 error");
-		for(;;);
-	}
-	if(!(f2 = SD.open("/Recesija.wav"))){
-		Serial.println("f2 error");
-		for(;;);
-	}
-	Serial.printf("Pre H: %d\n", ESP.getFreeHeap());
-	wav1 = new SourceWAV(f1);
-	Serial.printf("wav1 H: %d\n", ESP.getFreeHeap());
-	wav2 = new SourceWAV(f2);
-	Serial.printf("wav2 H: %d\n", ESP.getFreeHeap());
-	mixer = new Mixer();
-	Serial.printf("mixer H: %d\n", ESP.getFreeHeap());
-	mixer->addSource(wav1);
-	Serial.printf("mixer add 1 H: %d\n", ESP.getFreeHeap());
-	mixer->addSource(wav2);
-	Serial.printf("mixer add 2 H: %d\n", ESP.getFreeHeap());
-	mixer->setMixRatio(170);
-
-
-	mixer->setMixRatio(255/2);
-	i2s->setSource(mixer);
-
-	i2s->start();
-	Serial.printf("I2S start: %d\n", ESP.getFreeHeap());
-
-	for(;;){
-		if(i2s->isRunning() && millis() < 10000){
-			Profiler.init();
-			i2s->loop(0);
-			Profiler.report();
-		}else{
-			i2s->stop();
-			for(;;);
-		}
-	}
-}
+MixSystem* mix = nullptr;
 
 void setup(){
 	Serial.begin(115200);
+
+	pinMode(25, OUTPUT);
+	digitalWrite(25, HIGH);
+
 	WiFi.mode(WIFI_OFF);
 	btStop();
 
@@ -132,52 +93,36 @@ void setup(){
 		Serial.println("No PSRAM");
 	}
 
-	disableCore0WDT();
-	disableCore1WDT();
-
-	SPI.begin(18, 19, 23);
+	SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI, SPI_SS);
 	SPI.setFrequency(60000000);
 	if(!SD.begin(22, SPI)){
 		Serial.println("No SD card");
 		for(;;);
 	}
+	if(!SPIFFS.begin()){
+		Serial.println("SPIFFS error");
+	}
+	display.begin();
+	SPI.setFrequency(20000000);
 
-	/*SPI.begin(18, 19, 23);
-	SPI.setFrequency(60000000);
-	if(!SD.begin(5, SPI)){
-		Serial.println("No SD card");
+	if(!LEDmatrix.begin(I2C_SDA, I2C_SCL)){
+		Serial.println("couldn't start matrix");
 		for(;;);
-	}*/
-
-	listSD();
-
-
-
-	i2s = new OutputI2S({
-								.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_TX),
-								.sample_rate = 44100,
-								.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
-								.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
-								.communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
-								.intr_alloc_flags = 0,
-								.dma_buf_count = 6,
-								.dma_buf_len = 512,
-								.use_apll = false
-						}, i2s_pin_config, I2S_NUM_0);
-
-	Serial.printf("I2S: %d\n", ESP.getFreeHeap());
-	i2s->setGain(0.1);
-
-	//mainThread(nullptr);
-
-	Task* maintask = new Task("Main", mainThread, 20240);
-	maintask->start(1, 0);
-
-	for(;;){
-		Sched.loop(0);
 	}
 
-	vTaskDelete(nullptr);
+	Settings.begin();
+	LEDmatrix.setBrightness(80.0f * (float) Settings.get().brightnessLevel / 255.0f);
+
+	LoopManager::addListener(&Sched);
+	LoopManager::addListener(&matrixManager);
+	LoopManager::addListener(new InputJayD());
+	InputJayD::getInstance()->begin();
+
+	mix = new MixSystem(SD.open("/Walter2.aac"), SD.open("/Recesija2.aac"));
+	mix->setMix(128);
+	mix->setVolume(0, 50);
+	mix->setVolume(1, 50);
+	mix->start();
 
 	/*InputJayD* input = new InputJayD();
 	input->begin();
