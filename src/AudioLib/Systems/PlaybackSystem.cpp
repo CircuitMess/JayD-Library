@@ -121,3 +121,7 @@ void PlaybackSystem::_seek(uint16_t time) {
 	}
 	source->seek(time, SeekSet);
 }
+
+void PlaybackSystem::updateGain(){
+	out->setGain((float) Settings.get().volumeLevel / 255.0f);
+}

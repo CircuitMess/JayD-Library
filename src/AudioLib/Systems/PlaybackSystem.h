@@ -38,6 +38,7 @@ public:
 	void seek(uint16_t time);
 
 	void setRepeat(bool repeat = true);
+	void updateGain();
 
 private:
 	bool running = false;
