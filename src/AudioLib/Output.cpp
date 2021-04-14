@@ -55,11 +55,15 @@ void Output::loop(uint _time){
 }
 
 void Output::start(){
+	if(running) return;
+
 	init();
 	running = true;
 }
 
 void Output::stop(){
+	if(!running) return;
+
 	deinit();
 	running = false;
 }
