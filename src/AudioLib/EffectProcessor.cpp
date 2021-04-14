@@ -8,12 +8,6 @@ EffectProcessor::EffectProcessor(Generator* generator) : inputGenerator(generato
 EffectProcessor::~EffectProcessor()
 {
 	free(effectBuffer);
-
-	for(Effect* effect : effectList){
-		delete effect;
-	}
-
-	delete inputGenerator;
 }
 
 size_t EffectProcessor::generate(int16_t* outBuffer){
@@ -55,6 +49,7 @@ void EffectProcessor::removeEffect(int index){
 }
 
 Effect* EffectProcessor::getEffect(int index){
+	if(index >= effectList.size()) return nullptr;
 	return effectList[index];
 }
 

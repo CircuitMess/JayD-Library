@@ -4,6 +4,7 @@
 #include "../Effects/HighPass.h"
 #include "../Effects/Reverb.h"
 #include "../Effects/BitCrusher.h"
+#include "../../Settings.h"
 
 MixSystem::MixSystem(const fs::File& f1, const fs::File& f2) : MixSystem(){
 	open(0, f1);
@@ -35,8 +36,26 @@ MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 4 * 1024, this), que
 								.use_apll = false
 						}, i2s_pin_config, I2S_NUM_0);
 
-	out->setGain(0.05);
+	out->setGain((float) Settings.get().volumeLevel / 255.0f);
 	out->setSource(mixer);
+}
+
+MixSystem::~MixSystem(){
+	stop();
+	Sched.loop(0);
+	delete out;
+	delete mixer;
+
+	for(int i = 0; i < 2; i++){
+		for(int j = 0; j < 3; j++){
+			delete effector[i]->getEffect(j);
+		}
+
+		delete effector[i];
+		delete speed[i];
+
+		delete source[i];
+	}
 }
 
 bool MixSystem::open(uint8_t c, const fs::File& file){
@@ -82,7 +101,10 @@ void MixSystem::audioThread(Task* task){
 					system->_setEffectIntensity(request->channel, request->slot, request->value);
 					break;
 				case MixRequest::SET_INFO:
-					system->_setInfoGenerator(request->channel, (InfoGenerator*)request->value);
+					system->_setInfoGenerator(request->channel, (InfoGenerator*) request->value);
+					break;
+				case MixRequest::SET_SEEK:
+					system->_seekChannel(request->channel, (uint16_t) request->value);
 					break;
 			}
 
@@ -213,20 +235,20 @@ void MixSystem::_setEffectIntensity(uint8_t c, uint8_t s, uint8_t intensity){
 	effector[c]->getEffect(s)->setIntensity(intensity);
 }
 
-Effect* (*MixSystem::getEffect[])() = {
-		[]() -> Effect* { return nullptr; }, // None
-		[]() -> Effect* { return nullptr; }, // Speed
-		[]() -> Effect* { return new LowPass(); },
-		[]() -> Effect* { return new HighPass(); },
-		[]() -> Effect* { return new Reverb(); },
-		[]() -> Effect* { return new BitCrusher(); }
+Effect* (* MixSystem::getEffect[])() = {
+		[]() -> Effect*{ return nullptr; }, // None
+		[]() -> Effect*{ return nullptr; }, // Speed
+		[]() -> Effect*{ return new LowPass(); },
+		[]() -> Effect*{ return new HighPass(); },
+		[]() -> Effect*{ return new Reverb(); },
+		[]() -> Effect*{ return new BitCrusher(); }
 };
 
-void MixSystem::setOutInfo(InfoGenerator *outInfoGen) {
+void MixSystem::setOutInfo(InfoGenerator* outInfoGen){
 	setChannelInfo(2, outInfoGen);
 }
 
-void MixSystem::_setInfoGenerator(uint8_t channel, InfoGenerator *generator) {
+void MixSystem::_setInfoGenerator(uint8_t channel, InfoGenerator* generator){
 	if(channel > 2 || generator == nullptr) return;
 	if(channel == 2){
 		out->setSource(generator);
@@ -237,24 +259,43 @@ void MixSystem::_setInfoGenerator(uint8_t channel, InfoGenerator *generator) {
 	}
 }
 
-void MixSystem::setChannelInfo(uint8_t channel, InfoGenerator *channelInfoGen) {
+void MixSystem::setChannelInfo(uint8_t channel, InfoGenerator* channelInfoGen){
 	if(!out->isRunning()){
 		_setInfoGenerator(channel, channelInfoGen);
 		return;
 	}
 
 	if(queue.count() == queue.getQueueSize()) return;
-	MixRequest* request = new MixRequest({ MixRequest::SET_INFO, channel, 0, (size_t)channelInfoGen });
+	MixRequest* request = new MixRequest({ MixRequest::SET_INFO, channel, 0, (size_t) channelInfoGen });
 	queue.send(&request);
 }
 
-void MixSystem::pauseChannel(uint8_t channel) {
+void MixSystem::pauseChannel(uint8_t channel){
 	mixer->pauseChannel(channel);
 }
 
-void MixSystem::resumeChannel(uint8_t channel) {
+void MixSystem::resumeChannel(uint8_t channel){
 	mixer->resumeChannel(channel);
 	if(!out->isRunning()){
 		out->start();
 	}
+}
+
+void MixSystem::seekChannel(uint8_t channel, uint16_t time){
+	if(!out->isRunning()){
+		_seekChannel(channel, time);
+		return;
+	}
+
+	if(queue.count() == queue.getQueueSize()) return;
+	MixRequest* request = new MixRequest({ MixRequest::SET_SEEK, channel, 0, time });
+	queue.send(&request);
+}
+
+void MixSystem::_seekChannel(uint8_t channel, uint16_t time){
+	if(channel > 1) return;
+	if(out->isRunning()){
+		i2s_zero_dma_buffer((i2s_port_t) 0);
+	}
+	source[channel]->seek(time, SeekSet);
 }

@@ -38,7 +38,7 @@ private:
 	uint32_t bitrate = 0;
 
 	size_t dataSize = 0;
-	size_t readData = 0;
+	size_t movedBytes = 0;
 
 	float volume = 1.0f;
 
@@ -78,13 +78,13 @@ private:
 
 		unsigned char number_of_raw_data_blocks_in_frame: 2;
 		unsigned char adts_buffer_fullness_5_to_10: 6;
-	} currentFrame;
+	};
 
 
 	SDResult* readResult = nullptr;
 	void addReadJob(bool full = false);
 	void processReadJob();
-	void reload();
+	void resetDecoding();
 
 	bool repeat = false;
 

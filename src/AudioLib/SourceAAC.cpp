@@ -18,10 +18,13 @@ SourceAAC::SourceAAC(fs::File file) : SourceAAC(){
 }
 
 void SourceAAC::open(fs::File file){
+	close();
+
 	this->file = file;
-	channels = sampleRate = bytesPerSample = bitrate = readData = 0;
+	channels = sampleRate = bytesPerSample = bitrate = movedBytes = 0;
 	readBuffer.clear();
 	dataBuffer.clear();
+	fillBuffer.clear();
 
 	if(!file){
 		return;
@@ -29,20 +32,40 @@ void SourceAAC::open(fs::File file){
 
 	dataSize = file.size();
 	bitrate = 128000;
+	bytesPerSample = 2;
 
 	hAACDecoder = AACInitDecoder();
 	if(hAACDecoder == nullptr){
 		Serial.println("Decoder construct fail");
 
-	}else{
-		Serial.println("Decoder constructed");
 	}
 
 	addReadJob(true);
 }
 
-SourceAAC::~SourceAAC(){
+void SourceAAC::close(){
+	if(readJobPending){
+		while(readResult == nullptr){
+			delayMicroseconds(1);
+		}
 
+		free(readResult->buffer);
+		delete readResult;
+	}
+
+	channels = sampleRate = bytesPerSample = bitrate = movedBytes = 0;
+	readBuffer.clear();
+	dataBuffer.clear();
+	fillBuffer.clear();
+
+	if(hAACDecoder){
+		AACFreeDecoder(hAACDecoder);
+		hAACDecoder = nullptr;
+	}
+}
+
+SourceAAC::~SourceAAC(){
+	SourceAAC::close();
 }
 
 void SourceAAC::addReadJob(bool full){
@@ -80,11 +103,9 @@ void SourceAAC::addReadJob(bool full){
 void SourceAAC::processReadJob(){
 	if(readResult == nullptr){
 		if(readBuffer.readAvailable() + fillBuffer.readAvailable() < AAC_DECODE_MIN_INPUT){
-			Serial.println("small");
 			while(readResult == nullptr){
 				delayMicroseconds(1);
 			}
-			Serial.println("ok");
 		}else{
 			return;
 		}
@@ -116,8 +137,13 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 
 	refill();
 	if(fillBuffer.readAvailable() < AAC_DECODE_MIN_INPUT){
-		// reload if loop
-		return 0;
+		if(repeat){
+			seek(0, SeekSet);
+			processReadJob();
+			refill();
+		}else{
+			return 0;
+		}
 	}
 
 	while(dataBuffer.readAvailable() < BUFFER_SIZE){
@@ -166,11 +192,11 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 			size_t frameSize = fillBuffer.readAvailable() - bytesLeft;
 			Serial.printf("decode error %d, frame size %d B\n", ret, frameSize);
 			size_t size = min(frameSize, fillBuffer.readAvailable());
-			readData += size / (NUM_CHANNELS * BYTES_PER_SAMPLE);
+			movedBytes++;
 			fillBuffer.readMove(1);
 			continue;
 		}
-
+		movedBytes += fillBuffer.readAvailable() - bytesLeft;
 		fillBuffer.readMove(fillBuffer.readAvailable() - bytesLeft);
 
 		AACFrameInfo fi;
@@ -178,7 +204,6 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 
 		sampleRate = fi.sampRateOut;
 		channels = fi.nChans;
-		bytesPerSample = 2;
 
 		dataBuffer.writeMove(fi.outputSamps * channels * bytesPerSample);
 	}
@@ -193,16 +218,15 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 		outBuffer[i] *= volume;
 	}
 
-	Profiler.start("AAC read job add");
-	addReadJob();
-	Profiler.end();
-
-	if(samples == 0 && repeat){
-		// reload
-		return generate(outBuffer);
+	if(samples == 0){
+		if(repeat){
+			seek(0, SeekSet);
+			return generate(outBuffer);
+		}
+	}else{
+		addReadJob();
 	}
 
-	readData += samples;
 	return samples;
 }
 
@@ -224,31 +248,47 @@ uint16_t SourceAAC::getDuration(){
 
 uint16_t SourceAAC::getElapsed(){
 	if(bitrate == 0) return 0;
-	return readData / SAMPLE_RATE;
+	return 8 * movedBytes / bitrate;
 }
 
 void SourceAAC::seek(uint16_t time, fs::SeekMode mode){
-	if(sampleRate == 0 || channels == 0 || bytesPerSample == 0) return;
-	size_t offset = time * sampleRate * channels * bytesPerSample;
-	if(offset >= file.size()) return;
+	size_t offset = time * bitrate / 8;
+	if(offset >= file.size()){
+		return;
+	}
 
-	file.seek(offset, mode);
-}
+	if(readJobPending){
+		while (readResult == nullptr){
+			delayMicroseconds(1);
+		}
 
-void SourceAAC::close(){
-
+		free(readResult->buffer);
+		delete readResult;
+		readResult = nullptr;
+		readJobPending = false;
+	}
+	Sched.addJob(new SDJob{
+			.type = SDJob::SD_SEEK,
+			.file = file,
+			.size = offset,
+			.buffer = nullptr,
+			.result = &readResult
+	});
+	movedBytes = offset;
+	resetDecoding();
 }
 
 void SourceAAC::setVolume(uint8_t volume){
 	SourceAAC::volume = (float) volume / 255.0f;
 }
 
-void SourceAAC::reload() {
-	seek(0, SeekSet);
+void SourceAAC::resetDecoding() {
 	readBuffer.clear();
 	dataBuffer.clear();
 	fillBuffer.clear();
 	AACFlushCodec(hAACDecoder);
+
+	addReadJob();
 }
 
 void SourceAAC::setRepeat(bool repeat) {

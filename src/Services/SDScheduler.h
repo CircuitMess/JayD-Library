@@ -13,7 +13,7 @@ struct SDResult {
 };
 
 struct SDJob {
-	enum { SD_WRITE, SD_READ } type;
+	enum { SD_WRITE, SD_READ, SD_SEEK } type;
 	fs::File file;
 	size_t size;
 	uint8_t* buffer;

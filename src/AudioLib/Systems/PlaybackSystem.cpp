@@ -22,6 +22,13 @@ PlaybackSystem::PlaybackSystem() : audioTask("MixAudio", audioThread, 4 * 1024, 
 	out->setGain((float) Settings.get().volumeLevel / 255.0f);
 }
 
+PlaybackSystem::~PlaybackSystem(){
+	stop();
+	Sched.loop(0);
+	delete out;
+	delete source;
+}
+
 bool PlaybackSystem::open(const fs::File& file){
 	this->file = file;
 	if(!file) return false;
@@ -45,18 +52,13 @@ void PlaybackSystem::audioThread(Task* task){
 			system->queue.receive(&request);
 
 			switch(request->type){
+				case PlaybackRequest::SEEK:
+					system->_seek(request->value);
+					break;
 
 			}
 
 			delete request;
-		}
-
-		bool singleStop = true;
-		while(system->paused){
-			if(system->out->isRunning() && singleStop){
-				system->out->stop();
-				singleStop = false;
-			}
 		}
 
 		if(!task->running) break;
@@ -68,27 +70,19 @@ void PlaybackSystem::audioThread(Task* task){
 }
 
 void PlaybackSystem::start(){
-	paused = false;
+	if(running) return;
+
+	running = true;
 	out->start();
 	audioTask.start(1, 0);
 }
 
 void PlaybackSystem::stop(){
-	paused = false;
+	if(!running) return;
+
 	audioTask.stop(true);
 	out->stop();
-}
-
-void PlaybackSystem::pause(){
-	paused = true;
-//	out->stop();
-}
-
-void PlaybackSystem::resume(){
-	if(!out->isRunning()) {
-		out->start();
-	}
-	paused = false;
+	running = false;
 }
 
 uint16_t PlaybackSystem::getDuration(){
@@ -106,11 +100,28 @@ void PlaybackSystem::setVolume(uint8_t volume){
 	source->setVolume(volume);
 }
 
-void PlaybackSystem::seek(uint16_t time, fs::SeekMode mode) {
-	if(!source) return;
-	source->seek(time, mode);
+void PlaybackSystem::seek(uint16_t time) {
+	if (!out->isRunning()) {
+		_seek(time);
+		return;
+	}
+
+	if (queue.count() == queue.getQueueSize()) return;
+	PlaybackRequest *request = new PlaybackRequest({PlaybackRequest::SEEK, time});
+	queue.send(&request);
 }
 
 void PlaybackSystem::setRepeat(bool _repeat) {
 	source->setRepeat(_repeat);
+}
+
+void PlaybackSystem::_seek(uint16_t time) {
+	if(out->isRunning()) {
+		i2s_zero_dma_buffer((i2s_port_t) 0);
+	}
+	source->seek(time, SeekSet);
+}
+
+void PlaybackSystem::updateGain(){
+	out->setGain((float) Settings.get().volumeLevel / 255.0f);
 }

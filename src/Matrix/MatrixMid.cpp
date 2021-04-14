@@ -20,10 +20,24 @@ void MatrixMid::push(){
 
 void MatrixMid::vu(uint16_t amp){
 	clear();
-	uint8_t total = ((float) amp / 255.0f) * (float) (width);
-	for(int i = 0; i <= total+1; i++){
-		for(int j = 0; j < height; j++){
-			drawPixel(i, j, 255);
+	uint16_t total = ((float) amp / (float)255.0) * (float) (width*255);
+	uint16_t totalUpper = (float) (width*255) - total;
+	for(int i = 0; i < width; i++){
+		if(totalUpper < i*255) {
+			break;
+		}else if(totalUpper > (i+1)*255) {
+			drawPixel(i, 0, 255);
+		}else{
+			drawPixel(i, 0,totalUpper - i*255);
+		}
+	}
+	for(int i = 0; i < width; i++){
+		if(total < i*255) {
+			break;
+		}else if(total > (i+1)*255) {
+			drawPixel(width - 1 - i, 1, 255);
+		}else{
+			drawPixel(width - 1 - i, 1,total - i*255);
 		}
 	}
 }
