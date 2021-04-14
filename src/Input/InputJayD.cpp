@@ -232,6 +232,7 @@ void InputJayD::handleEncoderEvent(uint8_t id, int8_t value){
 }
 
 void InputJayD::handlePotentiometerEvent(uint8_t id, uint8_t value){
+	value = constrain(((float) value / 235.0f) * 255.0f, 0, 255);
 	if(potMovedCallbacks[id] != nullptr){
 		potMovedCallbacks[id](value);
 	}
