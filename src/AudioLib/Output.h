@@ -3,10 +3,12 @@
 
 #include <Arduino.h>
 #include <Loop/LoopListener.h>
+class OutputSplitter;
 class Generator;
 
 class Output : public LoopListener
 {
+	friend OutputSplitter;
 public:
 	Output(bool timed = false);
 	~Output();

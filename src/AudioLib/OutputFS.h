@@ -2,25 +2,34 @@
 #define JAYD_OUTPUTFS_H
 
 #include "Output.h"
+#include "../AudioSetup.hpp"
 #include <FS.h>
 #include <aacenc_lib.h>
+#include <Buffer/DataBuffer.h>
 #include "../Services/SDScheduler.h"
+
+#define OUTFS_DECODE_BUFSIZE 1024 * NUM_CHANNELS // The output buffer size should be 6144 bits per channel excluding the LFE channel.
+#define OUTFS_BUFSIZE 4 * 1024 * NUM_CHANNELS
+#define OUTFS_WRITESIZE 3 * 1024 * NUM_CHANNELS // should be smaller than BUFSIZE
+#define OUTFS_BUFCOUNT 4
 
 class OutputFS : public Output
 {
 public:
-	OutputFS(const char* path, fs::FS* filesystem);
+	OutputFS();
+	OutputFS(const fs::File& file);
 	~OutputFS();
 	void init() override;
 	void deinit() override;
+	const fs::File& getFile() const;
+	void setFile(const fs::File& file);
 
 protected:
 	void output(size_t numBytes) override;
 
 private:
 	const char* path;
-	fs::FS* filesystem;
-	fs::File* file;
+	fs::File file;
 	size_t dataLength;
 
 	void writeHeaderWAV(size_t size);
@@ -31,9 +40,14 @@ private:
 	AACENC_InArgs inArgs;
 	void setupBuffers();
 
-	SDResult* writeResult = nullptr;
-	bool writePending = false;
-	void addWriteJob(void* buffer, size_t size);
+	bool writePending[OUTFS_BUFCOUNT] = { false };
+	SDResult* writeResult[OUTFS_BUFCOUNT] = { nullptr };
+	void addWriteJob();
+	void processWriteJob();
+
+	uint8_t* decodeBuffer = nullptr;
+	DataBuffer outBuffers[OUTFS_BUFCOUNT];
+	std::vector<uint8_t> freeBuffers;
 };
 
 

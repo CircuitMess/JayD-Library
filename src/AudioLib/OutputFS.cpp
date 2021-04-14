@@ -20,27 +20,44 @@ struct wavHeader{
 	uint32_t dataSize; // == NumSamples * NumChannels * BitsPerSample/8
 };
 
-OutputFS::OutputFS(const char* path, fs::FS* filesystem) :
-		Output::Output(), path(path), filesystem(filesystem){
-}
+OutputFS::OutputFS() : outBuffers { DataBuffer(OUTFS_BUFSIZE), DataBuffer(OUTFS_BUFSIZE), DataBuffer(OUTFS_BUFSIZE), DataBuffer(OUTFS_BUFSIZE) }{
+	freeBuffers.reserve(OUTFS_BUFCOUNT);
+	for(int i = 0; i < OUTFS_BUFCOUNT; i++){
+		freeBuffers.push_back(i);
+	}
 
-OutputFS::~OutputFS(){
-	if(file != nullptr){
-		file->close();
-		delete file;
+	if(psramFound()){
+		decodeBuffer = static_cast<uint8_t*>(ps_malloc(OUTFS_DECODE_BUFSIZE));
+	}else{
+		decodeBuffer = static_cast<uint8_t*>(malloc(OUTFS_DECODE_BUFSIZE));
 	}
 }
 
-void* outputBuffer = nullptr; // The output buffer size should be 6144 bits per channel excluding the LFE channel.
+OutputFS::OutputFS(const fs::File& file) : OutputFS(){
+	this->file = file;
+}
+
+OutputFS::~OutputFS(){
+	free(decodeBuffer);
+}
+
+const fs::File& OutputFS::getFile() const{
+	return file;
+}
+
+void OutputFS::setFile(const fs::File& file){
+	OutputFS::file = file;
+}
 
 static void* inBuffer[] = { inBuffer };
 static INT inBufferIds[] = { IN_AUDIO_DATA };
 static INT inBufferSize[] = { BUFFER_SAMPLES * NUM_CHANNELS };
-static INT inBufferElSize[] = { BYTES_PER_SAMPLE };
 
-static void* outBuffer[] = { outputBuffer };
+static INT inBufferElSize[] = { BYTES_PER_SAMPLE };
+static void* outBuffer[] = { nullptr };
 static INT outBufferIds[] = { OUT_BITSTREAM_DATA };
-static INT outBufferSize[] = { sizeof(outputBuffer) };
+static INT outBufferSize[] = { 0 };
+
 static INT outBufferElSize[] = { sizeof(UCHAR) };
 
 void OutputFS::setupBuffers(){
@@ -62,14 +79,21 @@ void OutputFS::setupBuffers(){
 	};
 }
 
-#define WB_COUNT 4
-uint8_t* writeBuffer = static_cast<uint8_t*>(malloc(BUFFER_SIZE * WB_COUNT));
-uint8_t* wbPtr = static_cast<uint8_t*>(writeBuffer);
-int wbi = 0;
-
 void OutputFS::output(size_t numSamples){
+	processWriteJob();
+
+	while(freeBuffers.empty()){
+		Serial.println("Waiting for buffers");
+		processWriteJob();
+	}
+
+	DataBuffer& buffer = outBuffers[freeBuffers.front()];
+
 	Profiler.start("AAC encode");
+	// TODO: move these three to constructor
 	::inBuffer[0] = this->inBuffer;
+	::outBuffer[0] = decodeBuffer;
+	::outBufferSize[0] = OUTFS_DECODE_BUFSIZE;
 	inArgs.numInSamples = numSamples * NUM_CHANNELS;
 	AACENC_OutArgs outArgs;
 	int status = aacEncEncode(encoder, &inBufDesc, &outBufDesc, &inArgs, &outArgs);
@@ -79,31 +103,21 @@ void OutputFS::output(size_t numSamples){
 	Profiler.end();
 
 	if(outArgs.numOutBytes != 0){
-		memcpy(wbPtr, outputBuffer, outArgs.numOutBytes);
-		wbPtr += outArgs.numOutBytes;
-		wbi++;
+		memcpy(buffer.writeData(), decodeBuffer, outArgs.numOutBytes);
+		buffer.writeMove(outArgs.numOutBytes);
+	}
 
-		if(wbi == WB_COUNT){
-			Profiler.start("AAC write");
-			addWriteJob(writeBuffer, wbPtr - writeBuffer);
-			Profiler.end();
-
-			wbi = 0;
-			wbPtr = static_cast<uint8_t*>(writeBuffer);
-		}
+	if(buffer.readAvailable() >= OUTFS_WRITESIZE){
+		addWriteJob();
 	}
 }
 
 void OutputFS::init(){
 	dataLength = 0;
-	file = new fs::File(filesystem->open(path, "w"));
-	if(!(*file)){
-		Serial.println("Couldn't open file for output");
+	if(!file){
+		Serial.println("Output file not open");
 		return;
 	}
-
-	wbi = 0;
-	wbPtr = static_cast<uint8_t*>(writeBuffer);
 
 	if(aacEncOpen(&encoder, 0x01, 1) != AACENC_OK){
 		Serial.println("encoder create error");
@@ -130,19 +144,18 @@ void OutputFS::init(){
 		return;
 	}
 
-	size_t outSize = max(8192, NUM_CHANNELS * 768);
-
-	Serial.printf("FRAME LENGTH: %ld\n", outSize);
-	free(outputBuffer);
-	outputBuffer = malloc(outSize);
-	outBuffer[0] = outputBuffer;
-	outBufferSize[0] = outSize;
+	/*size_t outSize = max(8192, NUM_CHANNELS * 768);
+	Serial.printf("FRAME LENGTH: %ld\n", outSize);*/
 
 	setupBuffers();
-	file->seek(0);
+	file.seek(0);
 }
 
 void OutputFS::deinit(){
+	if(!freeBuffers.empty() && outBuffers[freeBuffers.front()].readAvailable() > 0){
+		addWriteJob();
+	}
+
 	inArgs.numInSamples = -1;
 	AACENC_OutArgs outArgs;
 	int status = aacEncEncode(encoder, nullptr, &outBufDesc, &inArgs, &outArgs);
@@ -151,41 +164,53 @@ void OutputFS::deinit(){
 	}
 
 	if(outArgs.numOutBytes != 0){
-		Profiler.start("AAC write");
-		addWriteJob(outputBuffer, outArgs.numOutBytes);
-		Profiler.end();
+		while(freeBuffers.empty()){
+			processWriteJob();
+		}
+
+		DataBuffer& buffer = outBuffers[freeBuffers.front()];
+		memcpy(buffer.writeData(), decodeBuffer, outArgs.numOutBytes);
+		buffer.writeMove(outArgs.numOutBytes);
+
+		addWriteJob();
 	}
 
 	aacEncClose(&encoder);
 
-	free(outputBuffer);
-	outputBuffer = nullptr;
-
-	file->close();
-	delete file;
+	while(freeBuffers.size() != OUTFS_BUFCOUNT){
+		processWriteJob();
+	}
 }
 
-void OutputFS::addWriteJob(void* buffer, size_t size){
-	if(writePending && writeResult == nullptr){
-		while(writeResult == nullptr){
-			delayMicroseconds(1);
-		}
-
-		writePending = false;
-	}
-
-	delete writeResult;
-	writeResult = nullptr;
+void OutputFS::addWriteJob(){
+	if(freeBuffers.empty()) return;
+	uint8_t i = freeBuffers.front();
 
 	Sched.addJob(new SDJob{
 			 .type = SDJob::SD_WRITE,
-			 .file = *file,
-			 .size = size,
-			 .buffer = static_cast<uint8_t*>(buffer),
-			 .result = &writeResult
+			 .file = file,
+			 .size = outBuffers[i].readAvailable(),
+			 .buffer = const_cast<uint8_t*>(outBuffers[i].readData()),
+			 .result = &writeResult[i]
 	 });
 
-	writePending = true;
+	freeBuffers.erase(freeBuffers.begin());
+	writePending[i] = true;
+}
+
+void OutputFS::processWriteJob(){
+	for(int i = 0; i < OUTFS_BUFCOUNT; i++){
+		if(!writePending[i]) continue;
+		if(writeResult[i] == nullptr) continue;
+
+		outBuffers[i].clear();
+
+		delete writeResult[i];
+		writeResult[i] = nullptr;
+
+		writePending[i] = false;
+		freeBuffers.push_back(i);
+	}
 }
 
 void OutputFS::writeHeaderWAV(size_t size){
@@ -204,6 +229,6 @@ void OutputFS::writeHeaderWAV(size_t size){
 	memcpy(header.data, "data", 4);
 	header.dataSize = size;
 
-	file->seek(0);
-	file->write((uint8_t*)&header, sizeof(wavHeader));
+	file.seek(0);
+	file.write((uint8_t*)&header, sizeof(wavHeader));
 }
