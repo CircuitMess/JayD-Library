@@ -9,7 +9,7 @@ PlaybackSystem::PlaybackSystem(const fs::File& f) : PlaybackSystem(){
 PlaybackSystem::PlaybackSystem() : audioTask("MixAudio", audioThread, 4 * 1024, this), queue(4, sizeof(PlaybackRequest*)){
 	out = new OutputI2S({
 								.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_TX),
-								.sample_rate = 48000,
+								.sample_rate = SAMPLE_RATE,
 								.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
 								.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
 								.communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
