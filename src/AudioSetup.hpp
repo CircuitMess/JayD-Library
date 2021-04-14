@@ -8,7 +8,7 @@ but if you're compiling for a board that doesn't have them defined, you can do s
 #endif
 
 #ifndef SAMPLE_RATE
-#define SAMPLE_RATE 44100
+#define SAMPLE_RATE 24000
 #endif
 
 #ifndef BYTES_PER_SAMPLE

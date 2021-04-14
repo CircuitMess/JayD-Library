@@ -31,7 +31,7 @@ void SourceAAC::open(fs::File file){
 	}
 
 	dataSize = file.size();
-	bitrate = 128000;
+	bitrate = 64000;
 	bytesPerSample = 2;
 
 	hAACDecoder = AACInitDecoder();
