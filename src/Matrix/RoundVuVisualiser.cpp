@@ -10,7 +10,7 @@ InfoGenerator *RoundVuVisualiser::getInfoGenerator() {
 
 void RoundVuVisualiser::loop(uint _millis) {
 	matrix->clear();
-	uint16_t total = ((float) info.getVu() / (float)INT16_MAX) * (float) (4*255);
+	uint16_t total = ((float) min(int(info.getVu()*2.5), INT16_MAX) / (float)INT16_MAX) * (float) (4*255);
 	for(int i = 0; i < 4; i++){
 		if(total < i*255) {
 			break;
