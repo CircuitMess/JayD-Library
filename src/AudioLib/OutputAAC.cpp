@@ -117,7 +117,7 @@ void OutputAAC::init(){
 	if(aacEncoder_SetParam(encoder, AACENC_AOT, 2) != AACENC_OK) Serial.println("1 err");
 	if(aacEncoder_SetParam(encoder, AACENC_SAMPLERATE, SAMPLE_RATE) != AACENC_OK) Serial.println("2 err");
 	if(aacEncoder_SetParam(encoder, AACENC_CHANNELMODE, MODE_1) != AACENC_OK) Serial.println("4 err");
-	if(aacEncoder_SetParam(encoder, AACENC_BITRATE,  24000) != AACENC_OK) Serial.println("3 err"); // 140000
+	if(aacEncoder_SetParam(encoder, AACENC_BITRATE,  64000) != AACENC_OK) Serial.println("3 err"); // 140000
 
 	if(aacEncoder_SetParam(encoder, AACENC_TRANSMUX,  2) != AACENC_OK) Serial.println("5 err");
 	if(aacEncoder_SetParam(encoder, AACENC_SIGNALING_MODE,  0) != AACENC_OK) Serial.println("6 err");
