@@ -68,6 +68,8 @@ public:
 	void setChannelDoneCallback(uint8_t channel, void(*callback)());
 
 private:
+	bool running = false;
+
 	Queue queue;
 
 	fs::File file[2];
