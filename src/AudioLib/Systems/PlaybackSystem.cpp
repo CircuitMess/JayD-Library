@@ -19,7 +19,7 @@ PlaybackSystem::PlaybackSystem() : audioTask("MixAudio", audioThread, 4 * 1024, 
 								.use_apll = false
 						}, i2s_pin_config, I2S_NUM_0);
 
-	out->setGain((float) Settings.get().volumeLevel / 255.0f);
+	out->setGain(0.4f*((float) Settings.get().volumeLevel) / 255.0f);
 }
 
 PlaybackSystem::~PlaybackSystem(){
@@ -130,5 +130,5 @@ void PlaybackSystem::_seek(uint16_t time) {
 }
 
 void PlaybackSystem::updateGain(){
-	out->setGain((float) Settings.get().volumeLevel / 255.0f);
+	out->setGain(0.4f*((float) Settings.get().volumeLevel) / 255.0f);
 }

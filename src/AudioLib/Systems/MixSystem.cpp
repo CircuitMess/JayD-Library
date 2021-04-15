@@ -38,7 +38,7 @@ MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 16 * 1024, this), qu
 								.use_apll = false
 						}, i2s_pin_config, I2S_NUM_0);
 
-	i2s->setGain((float) Settings.get().volumeLevel / 255.0f);
+	i2s->setGain(0.4f*((float) Settings.get().volumeLevel) / 255.0f);
 	i2s->setSource(mixer);
 
 	fsOut = new OutputWAV();
@@ -54,7 +54,6 @@ MixSystem::~MixSystem(){
 	delete fsOut;
 	delete i2s;
 	delete mixer;
-
 	for(int i = 0; i < 2; i++){
 		for(int j = 0; j < 3; j++){
 			delete effector[i]->getEffect(j);
