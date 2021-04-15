@@ -1,7 +1,7 @@
 #include "HighPass.h"
 
 HighPass::HighPass(){
-	setIntensity(0);
+	HighPass::setIntensity(0);
 }
 
 void HighPass::applyEffect(int16_t *inBuffer, int16_t *outBuffer, size_t numSamples){
@@ -13,35 +13,12 @@ void HighPass::applyEffect(int16_t *inBuffer, int16_t *outBuffer, size_t numSamp
 int16_t HighPass::signalProcessing(int16_t sample){
 	filter = filter2;
 	filter2 = sample;
-	sample = ((float)sample * fAmpI) + ((filter2 - filter) * fAmp)*gain;
-
-	float maxAmp = pow(2,15)-1;
-	float threshold = maxAmp * 0.9;
-	float window = maxAmp - threshold;
-
-	if(sample < 0){
-
-		threshold = -threshold;
-	}
-
-	if(abs(sample) >= abs(threshold)){
-
-		float over = (float)sample - threshold;
-		float overC = over/window;
-
-		sample = threshold + over * cos(overC*M_PI_2);
-
-		return (int16_t)sample;
-	}
-	else
-		return (int16_t)sample;
+	sample = ((float)sample * fAmpI) + ((filter2 - filter) * fAmp);
+	return sample;
 }
 
 void HighPass::setIntensity(uint8_t intensity){
-	gain = exp(intensity/255.0f) / 2.0f;
-
 	val = (float)intensity/255.0f;
 	fAmp = val;
 	fAmpI = 1 - val;
-
 }

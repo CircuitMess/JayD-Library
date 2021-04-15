@@ -18,8 +18,6 @@ private:
 
 	int16_t signalProcessing(int16_t sample);
 
-	float gain = 0;
-
 	float filter;
 	float filter2;
 
