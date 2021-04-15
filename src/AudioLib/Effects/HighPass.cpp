@@ -18,7 +18,7 @@ int16_t HighPass::signalProcessing(int16_t sample){
 }
 
 void HighPass::setIntensity(uint8_t intensity){
-	val = (float)intensity/255.0f;
+	float val = (float)intensity/255.0f;
 	fAmp = val;
 	fAmpI = 1 - val;
 }

@@ -21,7 +21,6 @@ private:
 	float filter;
 	float filter2;
 
-	float val;
 	float fAmp;
 	float fAmpI;
 
