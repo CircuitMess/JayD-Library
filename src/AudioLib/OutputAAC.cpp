@@ -3,23 +3,6 @@
 #include "../AudioSetup.hpp"
 #include "../PerfMon.h"
 
-
-struct wavHeader{
-	char RIFF[4];
-	uint32_t chunkSize;
-	char WAVE[4];
-	char fmt[3];
-	uint32_t fmtSize;
-	uint16_t audioFormat;
-	uint16_t numChannels;
-	uint32_t sampleRate;
-	uint32_t byteRate; // == SampleRate * NumChannels * BitsPerSample/8
-	uint16_t blockAlign; // == NumChannels * BitsPerSample/8
-	uint16_t bitsPerSample;
-	char data[4];
-	uint32_t dataSize; // == NumSamples * NumChannels * BitsPerSample/8
-};
-
 OutputAAC::OutputAAC(){
 	freeBuffers.reserve(OUTFS_BUFCOUNT);
 	for(int i = 0; i < OUTFS_BUFCOUNT; i++){
@@ -224,24 +207,4 @@ void OutputAAC::processWriteJob(){
 		writePending[i] = false;
 		freeBuffers.push_back(i);
 	}
-}
-
-void OutputAAC::writeHeaderWAV(size_t size){
-	wavHeader header;
-	memcpy(header.RIFF, "RIFF", 4);
-	header.chunkSize = size + 36;
-	memcpy(header.WAVE, "WAVE", 4);
-	memcpy(header.fmt, "fmt ", 4);
-	header.fmtSize = 16;
-	header.audioFormat = 1; //PCM
-	header.numChannels = NUM_CHANNELS; //2 channels
-	header.sampleRate = SAMPLE_RATE;
-	header.byteRate = SAMPLE_RATE * NUM_CHANNELS * BYTES_PER_SAMPLE;
-	header.blockAlign = NUM_CHANNELS * BYTES_PER_SAMPLE;
-	header.bitsPerSample = BYTES_PER_SAMPLE * 8;
-	memcpy(header.data, "data", 4);
-	header.dataSize = size;
-
-	file.seek(0);
-	file.write((uint8_t*)&header, sizeof(wavHeader));
 }

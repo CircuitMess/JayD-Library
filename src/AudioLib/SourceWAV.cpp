@@ -6,7 +6,7 @@
 
 //-------------------------------------------
 // Helper structs and funcs
-struct wavHeader{
+struct WavHeader{
 	char RIFF[4];
 	uint32_t chunkSize;
 	char WAVE[4];
@@ -151,13 +151,13 @@ bool SourceWAV::readHeader(){
 
 	file.seek(0);
 
-	char *buffer = (char*)malloc(sizeof(wavHeader));
-	if(file.readBytes(buffer, sizeof(wavHeader)) != sizeof(wavHeader)){
+	char *buffer = (char*)malloc(sizeof(WavHeader));
+	if(file.readBytes(buffer, sizeof(WavHeader)) != sizeof(WavHeader)){
 		Serial.println("Error, couldn't read from file");
 		free(buffer);
 		return false;
 	}
-	wavHeader *header = (wavHeader*)buffer;
+	WavHeader *header = (WavHeader*)buffer;
 	if(memcmp(header->RIFF, "RIFF", 4) != 0){
 		Serial.println("Error, couldn't find RIFF ID");
 		free(buffer);

@@ -28,11 +28,7 @@ protected:
 	void output(size_t numBytes) override;
 
 private:
-	const char* path;
 	fs::File file;
-	size_t dataLength;
-
-	void writeHeaderWAV(size_t size);
 
 	AACENC_BufDesc inBufDesc;
 	AACENC_BufDesc outBufDesc;
