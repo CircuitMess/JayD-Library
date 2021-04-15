@@ -394,3 +394,8 @@ void MixSystem::_stopRecording(){
 	fsOut->stop();
 	fileOut.close();
 }
+
+bool MixSystem::isChannelPaused(uint8_t channel){
+	if(!mixer) return false;
+	return mixer->isChannelPaused(channel);
+}
