@@ -37,6 +37,7 @@ public:
 
 	void start();
 	void stop();
+	bool isRunning();
 
 	uint16_t getDuration(uint8_t channel);
 	uint16_t getElapsed(uint8_t channel);

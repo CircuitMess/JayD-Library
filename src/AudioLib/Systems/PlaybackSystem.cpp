@@ -31,7 +31,10 @@ PlaybackSystem::~PlaybackSystem(){
 
 bool PlaybackSystem::open(const fs::File& file){
 	this->file = file;
-	if(!file) return false;
+	if(!file){
+		Serial.println("PlaybackSystem: file not open");
+		return false;
+	}
 
 	delete source;
 	this->source = new SourceAAC(file);
@@ -83,6 +86,10 @@ void PlaybackSystem::stop(){
 	audioTask.stop(true);
 	out->stop();
 	running = false;
+}
+
+bool PlaybackSystem::isRunning(){
+	return running;
 }
 
 uint16_t PlaybackSystem::getDuration(){

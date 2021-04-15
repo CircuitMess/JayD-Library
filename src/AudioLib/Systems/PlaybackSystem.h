@@ -30,6 +30,7 @@ public:
 
 	void start();
 	void stop();
+	bool isRunning();
 
 	uint16_t getDuration();
 	uint16_t getElapsed();

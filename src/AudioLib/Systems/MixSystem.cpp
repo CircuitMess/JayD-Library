@@ -68,7 +68,10 @@ MixSystem::~MixSystem(){
 
 bool MixSystem::open(uint8_t c, const fs::File& file){
 	this->file[c] = file;
-	if(!file) return false;
+	if(!file){
+		Serial.println("MixSystem: file not open");
+		return false;
+	}
 
 	delete source[c];
 	auto source = this->source[c] = new SourceAAC(file);
@@ -128,7 +131,9 @@ void MixSystem::audioThread(Task* task){
 		}
 
 		if(system->out->isRunning()){
+			Profiler.init();
 			system->out->loop(0);
+			Profiler.report();
 		}else{
 			system->running = false;
 		}
@@ -138,12 +143,16 @@ void MixSystem::audioThread(Task* task){
 }
 
 void MixSystem::start(){
+	if(running) return;
+
 	running = true;
 	out->start();
 	audioTask.start(1, 0);
 }
 
 void MixSystem::stop(){
+	if(!running) return;
+
 	audioTask.stop();
 
 	while(!audioTask.isStopped()){
@@ -155,6 +164,10 @@ void MixSystem::stop(){
 
 	out->stop();
 	running = false;
+}
+
+bool MixSystem::isRunning(){
+	return running;
 }
 
 uint16_t MixSystem::getDuration(uint8_t c){
