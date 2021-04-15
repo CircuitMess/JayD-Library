@@ -13,8 +13,11 @@ void LowPass::applyEffect(int16_t *inBuffer, int16_t *outBuffer, size_t numSampl
 int16_t LowPass::signalProcessing(int16_t sample){
 	filter = ((float)sample * fAmpI) + (filter * fAmp);
 	filter2 = (filter * fAmpI) + (filter2 * fAmp);
-	sample = filter2;
-	return sample;
+
+	float filtered = filter2;
+	filtered = constrain(filtered, -32768, 32767);
+
+	return filtered;
 }
 
 void LowPass::setIntensity(uint8_t intensity){
