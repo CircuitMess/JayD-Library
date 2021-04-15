@@ -22,9 +22,9 @@ void PerfMon::report(){
 
 	float total = (float) (micros() - initTime) / 1000.0f;
 	float max =  1000.0f * (float) BUFFER_SAMPLES / (float) SAMPLE_RATE;
-	Serial.printf("Total time: %.2f / %.2f", total, max);
+	Serial.printf("Total time: %.2f / %.2f (%.0f%%)", total, max, 100.0f * total / max);
 	if(total > max){
-		Serial.printf(" | %.2f over (%.0f%%)", total - max, 100.0f * (total - max) / max);
+		Serial.printf(" | %.2f over", total - max);
 	}
 
 	Serial.printf(" | H: %d B\n", ESP.getFreeHeap());
