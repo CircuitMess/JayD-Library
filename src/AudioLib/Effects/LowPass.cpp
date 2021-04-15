@@ -21,7 +21,7 @@ int16_t LowPass::signalProcessing(int16_t sample){
 }
 
 void LowPass::setIntensity(uint8_t intensity){
-	intensity *= 0.9f;
+	intensity *= 0.85f;
 
 	float val = (float)intensity/255.0f;
 	fAmp = val;
