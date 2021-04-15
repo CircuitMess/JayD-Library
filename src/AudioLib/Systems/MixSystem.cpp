@@ -33,7 +33,7 @@ MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 16 * 1024, this), qu
 								.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
 								.communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
 								.intr_alloc_flags = 0,
-								.dma_buf_count = 32,
+								.dma_buf_count = 8,
 								.dma_buf_len = 512,
 								.use_apll = false
 						}, i2s_pin_config, I2S_NUM_0);
