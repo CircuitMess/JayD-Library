@@ -31,6 +31,9 @@ size_t Mixer::generate(int16_t *outBuffer){
 		int16_t* buffer = bufferList[i];
 		if(generator != nullptr && buffer != nullptr){
 			receivedSamples[i] = generator->generate(buffer);
+			if(receivedSamples[i] == 0){
+				pauseList[i] = true;
+			}
 		}
 	}
 

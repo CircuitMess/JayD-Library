@@ -32,6 +32,7 @@ public:
 	void setVolume(uint8_t volume);
 
 	void setRepeat(bool repeat);
+	void setSongDoneCallback(void (*callback)());
 
 private:
 	fs::File file;
@@ -87,7 +88,7 @@ private:
 	void resetDecoding();
 
 	bool repeat = false;
-
+	void (*songDoneCallback)() = nullptr;
 };
 
 

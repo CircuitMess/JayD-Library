@@ -43,6 +43,10 @@ void SourceAAC::open(fs::File file){
 	addReadJob(true);
 }
 
+void SourceAAC::setSongDoneCallback(void (*callback)()) {
+	songDoneCallback = callback;
+}
+
 void SourceAAC::close(){
 	if(readJobPending){
 		while(readResult == nullptr){
@@ -137,8 +141,12 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 
 	refill();
 	if(fillBuffer.readAvailable() < AAC_DECODE_MIN_INPUT){
+		seek(0, SeekSet);
+		Serial.println("if fillbuffer < aac_decode_min");
+//		if(songDoneCallback != nullptr) {
+//			songDoneCallback();
+//		}
 		if(repeat){
-			seek(0, SeekSet);
 			processReadJob();
 			refill();
 		}else{
@@ -219,8 +227,12 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 	}
 
 	if(samples == 0){
+		seek(0, SeekSet);
+		Serial.println("if samples == 0");
+		if(songDoneCallback != nullptr) {
+			songDoneCallback();
+		}
 		if(repeat){
-			seek(0, SeekSet);
 			return generate(outBuffer);
 		}
 	}else{

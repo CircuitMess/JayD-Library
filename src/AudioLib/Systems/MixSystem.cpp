@@ -129,8 +129,6 @@ void MixSystem::audioThread(Task* task){
 
 		if(system->out->isRunning()){
 			system->out->loop(0);
-		}else{
-			system->running = false;
 		}
 	}
 
@@ -138,7 +136,6 @@ void MixSystem::audioThread(Task* task){
 }
 
 void MixSystem::start(){
-	running = true;
 	out->start();
 	audioTask.start(1, 0);
 }
@@ -154,7 +151,6 @@ void MixSystem::stop(){
 	fileOut.close();
 
 	out->stop();
-	running = false;
 }
 
 uint16_t MixSystem::getDuration(uint8_t c){
@@ -375,4 +371,8 @@ void MixSystem::_stopRecording(){
 
 	fsOut->stop();
 	fileOut.close();
+}
+
+void MixSystem::setChannelDoneCallback(uint8_t channel, void(*callback)()) {
+	source[channel]->setSongDoneCallback(callback);
 }
