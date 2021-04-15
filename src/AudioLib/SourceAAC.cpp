@@ -272,7 +272,7 @@ void SourceAAC::seek(uint16_t time, fs::SeekMode mode){
 			.file = file,
 			.size = offset,
 			.buffer = nullptr,
-			.result = &readResult
+			.result = nullptr
 	});
 	movedBytes = offset;
 	resetDecoding();
