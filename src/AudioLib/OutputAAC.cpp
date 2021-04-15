@@ -1,4 +1,4 @@
-#include "OutputFS.h"
+#include "OutputAAC.h"
 #include <string>
 #include "../AudioSetup.hpp"
 #include "../PerfMon.h"
@@ -20,7 +20,7 @@ struct wavHeader{
 	uint32_t dataSize; // == NumSamples * NumChannels * BitsPerSample/8
 };
 
-OutputFS::OutputFS(){
+OutputAAC::OutputAAC(){
 	freeBuffers.reserve(OUTFS_BUFCOUNT);
 	for(int i = 0; i < OUTFS_BUFCOUNT; i++){
 		outBuffers[i] = new DataBuffer(OUTFS_BUFSIZE);
@@ -34,11 +34,11 @@ OutputFS::OutputFS(){
 	}
 }
 
-OutputFS::OutputFS(const fs::File& file) : OutputFS(){
+OutputAAC::OutputAAC(const fs::File& file) : OutputAAC(){
 	this->file = file;
 }
 
-OutputFS::~OutputFS(){
+OutputAAC::~OutputAAC(){
 	for(auto& outBuffer : outBuffers){
 		delete outBuffer;
 	}
@@ -46,12 +46,12 @@ OutputFS::~OutputFS(){
 	free(decodeBuffer);
 }
 
-const fs::File& OutputFS::getFile() const{
+const fs::File& OutputAAC::getFile() const{
 	return file;
 }
 
-void OutputFS::setFile(const fs::File& file){
-	OutputFS::file = file;
+void OutputAAC::setFile(const fs::File& file){
+	OutputAAC::file = file;
 }
 
 static void* inBuffer[] = { inBuffer };
@@ -65,7 +65,7 @@ static INT outBufferSize[] = { 0 };
 
 static INT outBufferElSize[] = { sizeof(UCHAR) };
 
-void OutputFS::setupBuffers(){
+void OutputAAC::setupBuffers(){
 	inBufDesc.numBufs = sizeof(::inBuffer) / sizeof(void*);
 	inBufDesc.bufs = (void**) &::inBuffer;
 	inBufDesc.bufferIdentifiers = inBufferIds;
@@ -84,7 +84,7 @@ void OutputFS::setupBuffers(){
 	};
 }
 
-void OutputFS::output(size_t numSamples){
+void OutputAAC::output(size_t numSamples){
 	Profiler.start("AAC write process");
 	processWriteJob();
 	Profiler.end();
@@ -120,7 +120,7 @@ void OutputFS::output(size_t numSamples){
 	}
 }
 
-void OutputFS::init(){
+void OutputAAC::init(){
 	dataLength = 0;
 	if(!file){
 		Serial.println("Output file not open");
@@ -164,7 +164,7 @@ void OutputFS::init(){
 	file.seek(0);
 }
 
-void OutputFS::deinit(){
+void OutputAAC::deinit(){
 	if(!freeBuffers.empty() && outBuffers[freeBuffers.front()]->readAvailable() > 0){
 		addWriteJob();
 	}
@@ -195,7 +195,7 @@ void OutputFS::deinit(){
 	}
 }
 
-void OutputFS::addWriteJob(){
+void OutputAAC::addWriteJob(){
 	if(freeBuffers.empty()) return;
 	uint8_t i = freeBuffers.front();
 
@@ -211,7 +211,7 @@ void OutputFS::addWriteJob(){
 	writePending[i] = true;
 }
 
-void OutputFS::processWriteJob(){
+void OutputAAC::processWriteJob(){
 	for(int i = 0; i < OUTFS_BUFCOUNT; i++){
 		if(!writePending[i]) continue;
 		if(writeResult[i] == nullptr) continue;
@@ -226,7 +226,7 @@ void OutputFS::processWriteJob(){
 	}
 }
 
-void OutputFS::writeHeaderWAV(size_t size){
+void OutputAAC::writeHeaderWAV(size_t size){
 	wavHeader header;
 	memcpy(header.RIFF, "RIFF", 4);
 	header.chunkSize = size + 36;

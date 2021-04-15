@@ -13,12 +13,12 @@
 #define OUTFS_WRITESIZE 1 * 1024 * NUM_CHANNELS // should be smaller than BUFSIZE
 #define OUTFS_BUFCOUNT 16
 
-class OutputFS : public Output
+class OutputAAC : public Output
 {
 public:
-	OutputFS();
-	OutputFS(const fs::File& file);
-	~OutputFS();
+	OutputAAC();
+	OutputAAC(const fs::File& file);
+	~OutputAAC();
 	void init() override;
 	void deinit() override;
 	const fs::File& getFile() const;

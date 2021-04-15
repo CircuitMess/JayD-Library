@@ -4,7 +4,7 @@
 
 #include <Util/Task.h>
 #include "../OutputI2S.h"
-#include "../OutputFS.h"
+#include "../OutputAAC.h"
 #include "../OutputSplitter.h"
 #include "../SpeedModifier.h"
 #include "../EffectProcessor.h"
@@ -75,7 +75,7 @@ private:
 	EffectProcessor* effector[2];
 	Mixer* mixer;
 	OutputI2S* i2s;
-	OutputFS* fsOut;
+	OutputAAC* fsOut;
 	OutputSplitter* out;
 
 	SpeedModifier* speed[2] = { nullptr };

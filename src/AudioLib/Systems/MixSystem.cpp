@@ -6,13 +6,14 @@
 #include "../Effects/Reverb.h"
 #include "../Effects/BitCrusher.h"
 #include "../../Settings.h"
+#include "../../PerfMon.h"
 
 MixSystem::MixSystem(const fs::File& f1, const fs::File& f2) : MixSystem(){
 	open(0, f1);
 	open(1, f2);
 }
 
-MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 8 * 1024, this), queue(6, sizeof(MixRequest*)){
+MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 16 * 1024, this), queue(6, sizeof(MixRequest*)){
 	mixer = new Mixer();
 
 	for(int i = 0; i < 2; i++){
@@ -40,7 +41,7 @@ MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 8 * 1024, this), que
 	i2s->setGain((float) Settings.get().volumeLevel / 255.0f);
 	i2s->setSource(mixer);
 
-	fsOut = new OutputFS();
+	fsOut = new OutputAAC();
 
 	out = new OutputSplitter();
 	out->addOutput(i2s);
