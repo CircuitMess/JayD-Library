@@ -14,12 +14,12 @@ PlaybackSystem::PlaybackSystem() : audioTask("MixAudio", audioThread, 4 * 1024, 
 								.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
 								.communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
 								.intr_alloc_flags = 0,
-								.dma_buf_count = 16,
+								.dma_buf_count = 8,
 								.dma_buf_len = 512,
 								.use_apll = false
 						}, i2s_pin_config, I2S_NUM_0);
 
-	out->setGain((float) Settings.get().volumeLevel / 255.0f);
+	out->setGain(0.4f*((float) Settings.get().volumeLevel) / 255.0f);
 }
 
 PlaybackSystem::~PlaybackSystem(){
@@ -31,7 +31,10 @@ PlaybackSystem::~PlaybackSystem(){
 
 bool PlaybackSystem::open(const fs::File& file){
 	this->file = file;
-	if(!file) return false;
+	if(!file){
+		Serial.println("PlaybackSystem: file not open");
+		return false;
+	}
 
 	delete source;
 	this->source = new SourceAAC(file);
@@ -85,6 +88,10 @@ void PlaybackSystem::stop(){
 	running = false;
 }
 
+bool PlaybackSystem::isRunning(){
+	return running;
+}
+
 uint16_t PlaybackSystem::getDuration(){
 	if(!source) return 0;
 	return source->getDuration();
@@ -123,5 +130,5 @@ void PlaybackSystem::_seek(uint16_t time) {
 }
 
 void PlaybackSystem::updateGain(){
-	out->setGain((float) Settings.get().volumeLevel / 255.0f);
+	out->setGain(0.4f*((float) Settings.get().volumeLevel) / 255.0f);
 }

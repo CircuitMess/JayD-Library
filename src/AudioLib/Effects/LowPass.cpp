@@ -1,7 +1,7 @@
 #include "LowPass.h"
 
 LowPass::LowPass(){
-	setIntensity(0);
+	LowPass::setIntensity(0);
 }
 
 void LowPass::applyEffect(int16_t *inBuffer, int16_t *outBuffer, size_t numSamples){
@@ -11,40 +11,19 @@ void LowPass::applyEffect(int16_t *inBuffer, int16_t *outBuffer, size_t numSampl
 }
 
 int16_t LowPass::signalProcessing(int16_t sample){
-
 	filter = ((float)sample * fAmpI) + (filter * fAmp);
 	filter2 = (filter * fAmpI) + (filter2 * fAmp);
-	sample = filter2*gain;
 
-	float maxAmp = pow(2,15)-1;
-	float threshold = maxAmp * 0.9;
-	float window = maxAmp - threshold;
+	float filtered = filter2;
+	filtered = constrain(filtered, -32768, 32767);
 
-	if(sample < 0){
-
-		threshold = -threshold;
-	}
-
-	if(abs(sample) >= abs(threshold)){
-
-		float over = (float)sample - threshold;
-		float overC = over/window;
-
-		sample = threshold + over * cos(overC*M_PI_2);
-
-		return (int16_t)sample;
-	}
-	else
-		return (int16_t)sample;
-
+	return filtered;
 }
 
 void LowPass::setIntensity(uint8_t intensity){
-	intensity *= 0.9f;
+	intensity *= 0.85f;
 
-	gain = exp(intensity/255.0f) / 2.0f;
-
-	val = (float)intensity/255.0f;
+	float val = (float)intensity/255.0f;
 	fAmp = val;
 	fAmpI = 1 - val;
 }

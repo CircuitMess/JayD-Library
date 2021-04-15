@@ -90,13 +90,21 @@ Generator* Mixer::getSource(size_t index){
 }
 
 void Mixer::setSource(size_t index, Generator* source){
+	if(index >= sourceList.size()) return;
 	sourceList[index] = source;
 }
 
 void Mixer::pauseChannel(uint8_t channel) {
+	if(channel >= pauseList.size()) return;
 	pauseList[channel] = true;
 }
 
 void Mixer::resumeChannel(uint8_t channel) {
+	if(channel >= pauseList.size()) return;
 	pauseList[channel] = false;
+}
+
+bool Mixer::isChannelPaused(uint8_t channel){
+	if(channel >= pauseList.size()) return false;
+	return pauseList[channel];
 }

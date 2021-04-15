@@ -34,20 +34,33 @@ void SDScheduler::loop(uint micros) {
 
 void SDScheduler::doJob(SDJob* job){
 	SPI.setFrequency(60000000);
+
 	if(job->type == SDJob::SD_SEEK){
-		job->file.seek(job->size);
-		*job->result = nullptr;
+		bool success = job->file.seek(job->size);
+
+		if(job->result != nullptr){
+			SDResult* result = new SDResult();
+			result->size = job->size * success;
+			result->buffer = job->buffer;
+			result->error = 0;
+
+			*job->result = result;
+		}
 		return;
 	}
-	SDResult* result = new SDResult();
+
 	size_t size = job->type == SDJob::SD_READ
 				  ? job->file.read(job->buffer, job->size)
 				  : job->file.write(job->buffer, job->size);
 
-	result->error = 0;
-	result->buffer = job->buffer;
-	result->size = size;
+	if(job->result != nullptr){
+		SDResult* result = new SDResult();
 
-	*job->result = result;
+		result->error = 0;
+		result->buffer = job->buffer;
+		result->size = size;
+
+		*job->result = result;
+	}
 }
 

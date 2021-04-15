@@ -4,7 +4,7 @@
 
 #include <Util/Task.h>
 #include "../OutputI2S.h"
-#include "../OutputFS.h"
+#include "../OutputAAC.h"
 #include "../OutputSplitter.h"
 #include "../SpeedModifier.h"
 #include "../EffectProcessor.h"
@@ -14,6 +14,7 @@
 #include "../SourceAAC.h"
 #include <Sync/Queue.h>
 #include "../InfoGenerator.h"
+#include "../OutputWAV.h"
 
 struct MixRequest {
 	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_EFFECT, SET_EFFECT_INTENSITY, SET_INFO, SET_SEEK, RECORD } type;
@@ -28,7 +29,7 @@ public:
 	MixSystem(const fs::File& f1, const fs::File& f2);
 	virtual ~MixSystem();
 
-	constexpr static const char* const recordPath = "/Recording.aac";
+	constexpr static const char* const recordPath = "/.Jay-D_Recording.wav";
 
 	bool open(uint8_t channel, const fs::File& file);
 
@@ -37,6 +38,7 @@ public:
 
 	void start();
 	void stop();
+	bool isRunning();
 
 	uint16_t getDuration(uint8_t channel);
 	uint16_t getElapsed(uint8_t channel);
@@ -55,6 +57,7 @@ public:
 
 	void pauseChannel(uint8_t channel);
 	void resumeChannel(uint8_t channel);
+	bool isChannelPaused(uint8_t channel);
 
 	void seekChannel(uint8_t channel, uint16_t time);
 
@@ -75,7 +78,7 @@ private:
 	EffectProcessor* effector[2];
 	Mixer* mixer;
 	OutputI2S* i2s;
-	OutputFS* fsOut;
+	OutputWAV* fsOut;
 	OutputSplitter* out;
 
 	SpeedModifier* speed[2] = { nullptr };

@@ -23,6 +23,7 @@ public:
 
 	void pauseChannel(uint8_t channel);
 	void resumeChannel(uint8_t channel);
+	bool isChannelPaused(uint8_t channel);
 
 private:
 	std::vector<Generator*> sourceList;

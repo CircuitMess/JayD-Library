@@ -10,15 +10,15 @@
 
 #define OUTFS_DECODE_BUFSIZE 1024 * NUM_CHANNELS // The output buffer size should be 6144 bits per channel excluding the LFE channel.
 #define OUTFS_BUFSIZE 4 * 1024 * NUM_CHANNELS
-#define OUTFS_WRITESIZE 3 * 1024 * NUM_CHANNELS // should be smaller than BUFSIZE
-#define OUTFS_BUFCOUNT 4
+#define OUTFS_WRITESIZE 1 * 1024 * NUM_CHANNELS // should be smaller than BUFSIZE
+#define OUTFS_BUFCOUNT 16
 
-class OutputFS : public Output
+class OutputAAC : public Output
 {
 public:
-	OutputFS();
-	OutputFS(const fs::File& file);
-	~OutputFS();
+	OutputAAC();
+	OutputAAC(const fs::File& file);
+	~OutputAAC();
 	void init() override;
 	void deinit() override;
 	const fs::File& getFile() const;
@@ -28,11 +28,7 @@ protected:
 	void output(size_t numBytes) override;
 
 private:
-	const char* path;
 	fs::File file;
-	size_t dataLength;
-
-	void writeHeaderWAV(size_t size);
 
 	AACENC_BufDesc inBufDesc;
 	AACENC_BufDesc outBufDesc;
@@ -46,7 +42,7 @@ private:
 	void processWriteJob();
 
 	uint8_t* decodeBuffer = nullptr;
-	DataBuffer outBuffers[OUTFS_BUFCOUNT];
+	DataBuffer* outBuffers[OUTFS_BUFCOUNT] = { nullptr };
 	std::vector<uint8_t> freeBuffers;
 };
 
