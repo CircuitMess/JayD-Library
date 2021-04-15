@@ -10,8 +10,8 @@
 
 #define OUTFS_DECODE_BUFSIZE 1024 * NUM_CHANNELS // The output buffer size should be 6144 bits per channel excluding the LFE channel.
 #define OUTFS_BUFSIZE 4 * 1024 * NUM_CHANNELS
-#define OUTFS_WRITESIZE 3 * 1024 * NUM_CHANNELS // should be smaller than BUFSIZE
-#define OUTFS_BUFCOUNT 4
+#define OUTFS_WRITESIZE 1 * 1024 * NUM_CHANNELS // should be smaller than BUFSIZE
+#define OUTFS_BUFCOUNT 16
 
 class OutputFS : public Output
 {
@@ -46,7 +46,7 @@ private:
 	void processWriteJob();
 
 	uint8_t* decodeBuffer = nullptr;
-	DataBuffer outBuffers[OUTFS_BUFCOUNT];
+	DataBuffer* outBuffers[OUTFS_BUFCOUNT] = { nullptr };
 	std::vector<uint8_t> freeBuffers;
 };
 

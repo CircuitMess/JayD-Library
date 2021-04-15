@@ -20,9 +20,10 @@ struct wavHeader{
 	uint32_t dataSize; // == NumSamples * NumChannels * BitsPerSample/8
 };
 
-OutputFS::OutputFS() : outBuffers { DataBuffer(OUTFS_BUFSIZE), DataBuffer(OUTFS_BUFSIZE), DataBuffer(OUTFS_BUFSIZE), DataBuffer(OUTFS_BUFSIZE) }{
+OutputFS::OutputFS(){
 	freeBuffers.reserve(OUTFS_BUFCOUNT);
 	for(int i = 0; i < OUTFS_BUFCOUNT; i++){
+		outBuffers[i] = new DataBuffer(OUTFS_BUFSIZE);
 		freeBuffers.push_back(i);
 	}
 
@@ -38,6 +39,10 @@ OutputFS::OutputFS(const fs::File& file) : OutputFS(){
 }
 
 OutputFS::~OutputFS(){
+	for(auto& outBuffer : outBuffers){
+		delete outBuffer;
+	}
+
 	free(decodeBuffer);
 }
 
@@ -80,14 +85,15 @@ void OutputFS::setupBuffers(){
 }
 
 void OutputFS::output(size_t numSamples){
+	Profiler.start("AAC write process");
 	processWriteJob();
+	Profiler.end();
 
 	while(freeBuffers.empty()){
-		Serial.println("Waiting for buffers");
 		processWriteJob();
 	}
 
-	DataBuffer& buffer = outBuffers[freeBuffers.front()];
+	DataBuffer* buffer = outBuffers[freeBuffers.front()];
 
 	Profiler.start("AAC encode");
 	// TODO: move these three to constructor
@@ -103,12 +109,14 @@ void OutputFS::output(size_t numSamples){
 	Profiler.end();
 
 	if(outArgs.numOutBytes != 0){
-		memcpy(buffer.writeData(), decodeBuffer, outArgs.numOutBytes);
-		buffer.writeMove(outArgs.numOutBytes);
+		memcpy(buffer->writeData(), decodeBuffer, outArgs.numOutBytes);
+		buffer->writeMove(outArgs.numOutBytes);
 	}
 
-	if(buffer.readAvailable() >= OUTFS_WRITESIZE){
+	if(buffer->readAvailable() >= OUTFS_WRITESIZE){
+		Profiler.start("AAC write add");
 		addWriteJob();
+		Profiler.start("AAC write add");
 	}
 }
 
@@ -127,14 +135,19 @@ void OutputFS::init(){
 	if(aacEncoder_SetParam(encoder, AACENC_AOT, 2) != AACENC_OK) Serial.println("1 err");
 	if(aacEncoder_SetParam(encoder, AACENC_SAMPLERATE, SAMPLE_RATE) != AACENC_OK) Serial.println("2 err");
 	if(aacEncoder_SetParam(encoder, AACENC_CHANNELMODE, MODE_1) != AACENC_OK) Serial.println("4 err");
-	if(aacEncoder_SetParam(encoder, AACENC_BITRATE,  128000) != AACENC_OK) Serial.println("3 err"); // 140000
+	if(aacEncoder_SetParam(encoder, AACENC_BITRATE,  24000) != AACENC_OK) Serial.println("3 err"); // 140000
 
 	if(aacEncoder_SetParam(encoder, AACENC_TRANSMUX,  2) != AACENC_OK) Serial.println("5 err");
 	if(aacEncoder_SetParam(encoder, AACENC_SIGNALING_MODE,  0) != AACENC_OK) Serial.println("6 err");
 	if(aacEncoder_SetParam(encoder, AACENC_AFTERBURNER,  0) != AACENC_OK) Serial.println("7 err");
+	// if(aacEncoder_SetParam(encoder, AACENC_SBR_MODE,  1) != AACENC_OK) Serial.println("8 err");
+	// if(aacEncoder_SetParam(encoder, AACENC_SBR_RATIO,  1) != AACENC_OK) Serial.println("9 err");
+	// if(aacEncoder_SetParam(encoder, AACENC_GRANULE_LENGTH,  128) != AACENC_OK) Serial.println("10 err");
 
-	if(aacEncEncode(encoder, nullptr, nullptr, nullptr, nullptr) != AACENC_OK){
-		Serial.println("encoder first run error");
+
+	int ret;
+	if(ret = aacEncEncode(encoder, nullptr, nullptr, nullptr, nullptr) != AACENC_OK){
+		Serial.printf("encoder first run error %d\n", ret);
 		return;
 	}
 
@@ -152,7 +165,7 @@ void OutputFS::init(){
 }
 
 void OutputFS::deinit(){
-	if(!freeBuffers.empty() && outBuffers[freeBuffers.front()].readAvailable() > 0){
+	if(!freeBuffers.empty() && outBuffers[freeBuffers.front()]->readAvailable() > 0){
 		addWriteJob();
 	}
 
@@ -168,9 +181,9 @@ void OutputFS::deinit(){
 			processWriteJob();
 		}
 
-		DataBuffer& buffer = outBuffers[freeBuffers.front()];
-		memcpy(buffer.writeData(), decodeBuffer, outArgs.numOutBytes);
-		buffer.writeMove(outArgs.numOutBytes);
+		DataBuffer* buffer = outBuffers[freeBuffers.front()];
+		memcpy(buffer->writeData(), decodeBuffer, outArgs.numOutBytes);
+		buffer->writeMove(outArgs.numOutBytes);
 
 		addWriteJob();
 	}
@@ -189,8 +202,8 @@ void OutputFS::addWriteJob(){
 	Sched.addJob(new SDJob{
 			 .type = SDJob::SD_WRITE,
 			 .file = file,
-			 .size = outBuffers[i].readAvailable(),
-			 .buffer = const_cast<uint8_t*>(outBuffers[i].readData()),
+			 .size = outBuffers[i]->readAvailable(),
+			 .buffer = const_cast<uint8_t*>(outBuffers[i]->readData()),
 			 .result = &writeResult[i]
 	 });
 
@@ -203,7 +216,7 @@ void OutputFS::processWriteJob(){
 		if(!writePending[i]) continue;
 		if(writeResult[i] == nullptr) continue;
 
-		outBuffers[i].clear();
+		outBuffers[i]->clear();
 
 		delete writeResult[i];
 		writeResult[i] = nullptr;
