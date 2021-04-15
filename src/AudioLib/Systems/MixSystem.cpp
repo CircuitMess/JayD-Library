@@ -41,7 +41,7 @@ MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 16 * 1024, this), qu
 	i2s->setGain((float) Settings.get().volumeLevel / 255.0f);
 	i2s->setSource(mixer);
 
-	fsOut = new OutputAAC();
+	fsOut = new OutputWAV();
 
 	out = new OutputSplitter();
 	out->addOutput(i2s);
@@ -366,6 +366,10 @@ void MixSystem::stopRecording(){
 
 void MixSystem::_startRecording(){
 	if(isRecording()) return;
+
+	if(SD.exists(recordPath)){
+		SD.remove(recordPath);
+	}
 
 	fileOut = SD.open(recordPath, "w");
 	if(!fileOut){

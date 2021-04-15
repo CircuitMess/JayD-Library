@@ -14,6 +14,7 @@
 #include "../SourceAAC.h"
 #include <Sync/Queue.h>
 #include "../InfoGenerator.h"
+#include "../OutputWAV.h"
 
 struct MixRequest {
 	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_EFFECT, SET_EFFECT_INTENSITY, SET_INFO, SET_SEEK, RECORD } type;
@@ -28,7 +29,7 @@ public:
 	MixSystem(const fs::File& f1, const fs::File& f2);
 	virtual ~MixSystem();
 
-	constexpr static const char* const recordPath = "/Recording.aac";
+	constexpr static const char* const recordPath = "/.Jay-D_Recording.wav";
 
 	bool open(uint8_t channel, const fs::File& file);
 
@@ -75,7 +76,7 @@ private:
 	EffectProcessor* effector[2];
 	Mixer* mixer;
 	OutputI2S* i2s;
-	OutputAAC* fsOut;
+	OutputWAV* fsOut;
 	OutputSplitter* out;
 
 	SpeedModifier* speed[2] = { nullptr };
