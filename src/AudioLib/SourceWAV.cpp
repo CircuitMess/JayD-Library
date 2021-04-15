@@ -140,7 +140,7 @@ size_t SourceWAV::generate(int16_t *outBuffer){
 	addReadJob();
 
 	readData += size;
-	return BUFFER_SAMPLES;
+	return samples;
 }
 
 bool SourceWAV::readHeader(){
