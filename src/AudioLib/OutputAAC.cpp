@@ -104,7 +104,6 @@ void OutputAAC::output(size_t numSamples){
 }
 
 void OutputAAC::init(){
-	dataLength = 0;
 	if(!file){
 		Serial.println("Output file not open");
 		return;
