@@ -228,7 +228,7 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 
 	if(samples == 0){
 		seek(0, SeekSet);
-		Serial.println("if samples == 0");
+
 		if(songDoneCallback != nullptr) {
 			songDoneCallback();
 		}
