@@ -52,6 +52,18 @@ size_t Mixer::generate(int16_t *outBuffer){
 		outBuffer[i] = clip(wave);
 	}
 	size_t longestBuffer = *std::max_element(receivedSamples.begin(), receivedSamples.end());
+
+	if(longestBuffer == 0){
+		bool allPaused = true;
+		for(bool p : pauseList){
+			allPaused &= p;
+		}
+
+		if(allPaused){
+			return BUFFER_SAMPLES;
+		}
+	}
+
 	return longestBuffer;
 }
 
