@@ -178,6 +178,9 @@ uint16_t MixSystem::getDuration(uint8_t c){
 
 uint16_t MixSystem::getElapsed(uint8_t c){
 	if(c >= 2 || !source[c]) return 0;
+	if(seekPending[c] > 0){
+		return seek[c];
+	}
 	return source[c]->getElapsed();
 }
 
@@ -327,6 +330,9 @@ void MixSystem::seekChannel(uint8_t channel, uint16_t time){
 		return;
 	}
 
+	seek[channel] = time;
+	seekPending[channel]++;
+
 	if(queue.count() == queue.getQueueSize()) return;
 	MixRequest* request = new MixRequest({ MixRequest::SET_SEEK, channel, 0, time });
 	queue.send(&request);
@@ -334,8 +340,10 @@ void MixSystem::seekChannel(uint8_t channel, uint16_t time){
 
 void MixSystem::_seekChannel(uint8_t channel, uint16_t time){
 	if(channel > 1) return;
+
 	if(i2s->isRunning()){
-		i2s_zero_dma_buffer((i2s_port_t) 0);
+		seekPending[channel]--;
+		//i2s_zero_dma_buffer((i2s_port_t) 0);
 	}
 	source[channel]->seek(time, SeekSet);
 }

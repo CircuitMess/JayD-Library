@@ -97,6 +97,9 @@ private:
 
 	static Effect* (* getEffect[EffectType::COUNT])();
 
+	uint16_t seek[2];
+	int seekPending[2] = { 0 };
+
 };
 
 #endif //JAYD_LIBRARY_MIXSYSTEM_H
