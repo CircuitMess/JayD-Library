@@ -1,6 +1,9 @@
 #ifndef JAYD_H
 #define JAYD_H
 
+#define PIN_BL 25
+#define SD_CS 22
+
 #define ENC_MID 0
 #define ENC_L1 1
 #define ENC_L2 6
@@ -39,9 +42,26 @@
 #include <Arduino.h>
 #include <driver/i2s.h>
 #include <Devices/LEDmatrix/LEDmatrix.h>
+#include <Display/Display.h>
 #include "Matrix/MatrixManager.h"
+
 extern const i2s_pin_config_t i2s_pin_config;
 extern LEDmatrixImpl LEDmatrix;
 extern MatrixManager matrixManager;
+
+class JayDImpl {
+public:
+	JayDImpl();
+
+	void begin();
+
+	Display& getDisplay();
+
+private:
+	Display display;
+
+};
+
+extern JayDImpl JayD;
 
 #endif
