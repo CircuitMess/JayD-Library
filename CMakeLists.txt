@@ -32,6 +32,7 @@ include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/libraries/DNSS
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/libraries/CircuitOS/src)
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/libraries/TFT_eSPI)
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/libraries/TFT_eSPI/Extensions)
+include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/libraries/U8g2_for_TFT_eSPI/src)
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/libraries/FDK-AAC/src)
 
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/cores/esp32)
