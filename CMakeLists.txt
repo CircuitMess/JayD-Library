@@ -30,6 +30,9 @@ include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/libraries/HTTP
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/libraries/WebServer/src)
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/libraries/DNSServer/src)
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/libraries/CircuitOS/src)
+include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/libraries/TFT_eSPI)
+include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/libraries/TFT_eSPI/Extensions)
+include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/libraries/FDK-AAC/src)
 
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/cores/esp32)
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/tools/sdk)
@@ -39,10 +42,6 @@ include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/tools/sdk/incl
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/tools/sdk/include/driver)
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/tools/sdk/include/driver/driver)
 include_directories(${Arduino15}/packages/cm/hardware/esp32/1.1.1/tools/sdk/include/spi_flash)
-
-include_directories(${ArduinoLibs}/TFT_eSPI)
-include_directories(${ArduinoLibs}/TFT_eSPI/Extensions)
-include_directories(${ArduinoLibs}/FDK-AAC/src)
 
 file(GLOB_RECURSE SOURCES "src/**.cpp" "src/**.c" "src/**.hpp" "src/**.h")
 
