@@ -1,6 +1,6 @@
 #include <SD.h>
 #include "MixSystem.h"
-#include "../../JayD.hpp"
+#include "../../JayD.h"
 #include "../Effects/LowPass.h"
 #include "../Effects/HighPass.h"
 #include "../Effects/Reverb.h"

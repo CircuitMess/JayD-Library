@@ -1,5 +1,5 @@
 #include "PlaybackSystem.h"
-#include "../../JayD.hpp"
+#include "../../JayD.h"
 #include "../../Settings.h"
 
 PlaybackSystem::PlaybackSystem(const fs::File& f) : PlaybackSystem(){

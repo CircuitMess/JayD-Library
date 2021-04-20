@@ -1,5 +1,5 @@
 #include "InputJayD.h"
-#include "../JayD.hpp"
+#include "../JayD.h"
 #include <Wire.h>
 #include <driver/i2s.h>
 

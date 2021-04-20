@@ -1,4 +1,4 @@
-#include "JayD.hpp"
+#include "JayD.h"
 
 const i2s_pin_config_t i2s_pin_config = {
 		.bck_io_num = I2S_BCK,
