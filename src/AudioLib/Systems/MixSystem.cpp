@@ -240,7 +240,7 @@ void MixSystem::setEffect(uint8_t channel, uint8_t slot, EffectType type){
 
 void MixSystem::setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intensity){
 	if(!out->isRunning()){
-		setEffectIntensity(channel, slot, intensity);
+		_setEffectIntensity(channel, slot, intensity);
 		return;
 	}
 
