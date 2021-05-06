@@ -45,6 +45,7 @@ MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 16 * 1024, this), qu
 
 	out = new OutputSplitter();
 	out->addOutput(i2s);
+	out->setSource(mixer);
 }
 
 MixSystem::~MixSystem(){
