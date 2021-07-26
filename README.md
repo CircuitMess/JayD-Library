@@ -23,7 +23,7 @@ These libraries are automatically installed when you install the CircuitMess ESP
 
 ## Using Arduino IDE
 
-Simply open Spencer-Library.ino using Arduino IDE, set the board to Spencer, and compile.
+Simply open JayD-Library.ino using Arduino IDE, set the board to Jay-D, and compile.
 
 ## Using CMake
 
