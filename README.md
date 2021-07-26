@@ -51,6 +51,8 @@ in the cmake directory.
 # Used libraries and copyright notices
 [See NOTICE](https://github.com/CircuitMess/JayD-Library/blob/master/NOTICE.md)
 
+Code that runs on the Nuvoton N76E003 chip is located in a [separate repo](https://github.com/CircuitMess/JayD-Nuvoton-Firmware).
+
 # Meta
 
 
