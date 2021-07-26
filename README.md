@@ -18,6 +18,7 @@ The library is automatically installed when you install the CircuitMess ESP32 Ar
 The library uses several dependency libraries:
 - [CircuitOS](https://github.com/CircuitMess/CircuitOS) by CircuitMess
 - [FDK-AAC](https://github.com/mstorsjo/fdk-aac) by Martin Storsjö
+- [libhelix-mp3 and libhelix-aac](https://github.com/ultraembedded/libhelix-mp3) by RealNetworks
 
 These libraries are automatically installed when you install the CircuitMess ESP32 Arduino platform.
 

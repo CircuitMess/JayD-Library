@@ -36,3 +36,12 @@ https://github.com/mstorsjo/fdk-aac
 Forschung e.V. All rights reserved.
 
 [FDK license](https://github.com/mstorsjo/fdk-aac/blob/master/NOTICE)
+
+## libhelix-mp3 and libhelix-aac
+
+https://github.com/ultraembedded/libhelix-mp3
+
+
+Copyright (c) 1995-2004 RealNetworks, Inc. All Rights Reserved.
+
+[RPSL/RCSL license](https://github.com/CircuitMess/JayD-Library/blob/master/src/AudioLib/Decoder/libhelix-mp3/LICENSE.txt)
