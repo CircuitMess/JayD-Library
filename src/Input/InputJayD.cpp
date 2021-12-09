@@ -117,15 +117,15 @@ void InputJayD::removeListener(JayDInputListener* listener){
 uint8_t InputJayD::getNumEvents(){
 	Wire.beginTransmission(JDNV_ADDR);
 	Wire.write(BYTE_NUMEVENTS);
-	Wire.endTransmission();
+	if(Wire.endTransmission() != 0) return 0;
+
 	Wire.requestFrom(JDNV_ADDR, 2);
-	if(Wire.available()){
-		Wire.read();//addr
-	}
-	if(Wire.available()){
-		uint8_t numEventsData = Wire.read();
-		return numEventsData;
-	}
+	if(!Wire.available()) return 0;
+	Wire.read();//addr
+
+	if(!Wire.available()) return 0;
+	uint8_t numEventsData = Wire.read();
+	return numEventsData;
 }
 
 uint8_t InputJayD::getPotValue(uint8_t potID){
