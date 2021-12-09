@@ -39,7 +39,6 @@ void JayDImpl::begin(){
 	SPI.setFrequency(60000000);
 	if(!SD.begin(SD_CS, SPI)){
 		Serial.println("No SD card");
-		//for(;;);
 	}
 	if(!SPIFFS.begin()){
 		Serial.println("SPIFFS error");
@@ -50,7 +49,6 @@ void JayDImpl::begin(){
 
 	if(!LEDmatrix.begin(I2C_SDA, I2C_SCL)){
 		Serial.println("couldn't start matrix");
-		for(;;);
 	}
 
 	LoopManager::addListener(&Sched);
