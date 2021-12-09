@@ -1,12 +1,4 @@
-#include <WiFi.h>
-#include <SPI.h>
-#include <SD.h>
-#include <SPIFFS.h>
-#include <Loop/LoopManager.h>
 #include "JayD.h"
-#include "Settings.h"
-#include "Services/SDScheduler.h"
-#include "Input/InputJayD.h"
 
 const i2s_pin_config_t i2s_pin_config = {
 		.bck_io_num = I2S_BCK,
