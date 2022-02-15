@@ -1,7 +1,7 @@
 #include "SourceAAC.h"
 #include "../PerfMon.h"
 
-#define AAC_READ_BUFFER 1024 * 64
+#define AAC_READ_BUFFER 1024 * 4
 #define AAC_READ_CHUNK 1024 * 4 // should be bigger than min input
 #define AAC_DECODE_MIN_INPUT 1024 // should be smaller than read chunk
 #define AAC_OUT_BUFFER 1024 * 4
