@@ -5,7 +5,6 @@
 #include <Loop/LoopManager.h>
 #include "JayD.h"
 #include "Settings.h"
-#include "Services/SDScheduler.h"
 #include "Input/InputJayD.h"
 
 const i2s_pin_config_t i2s_pin_config = {
@@ -53,7 +52,7 @@ void JayDImpl::begin(){
 		for(;;);
 	}
 
-	LoopManager::addListener(&Sched);
+//	LoopManager::addListener(&Sched);
 	LoopManager::addListener(&matrixManager);
 	LoopManager::addListener(new InputJayD());
 	InputJayD::getInstance()->begin();
