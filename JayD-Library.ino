@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <CircuitOS.h>
-#include "src/JayD.hpp"
+#include "src/JayD.h"
 #include <Loop/LoopManager.h>
 #include "src/AudioLib/SourceWAV.h"
 #include "src/AudioLib/OutputI2S.h"
@@ -13,7 +13,7 @@
 
 #include <Display/Display.h>
 #include <SPI.h>
-#include <Devices/LEDmatrix/LEDmatrix.h>
+#include <Devices/Matrix/Matrix.h>
 #include <Devices/SerialFlash/SerialFlashFileAdapter.h>
 #include <SD.h>
 #include <WiFi.h>
@@ -25,15 +25,17 @@ Display display(160, 128, -1, -1);
 
 int pixel = 0;
 
+Matrix* matrix = &matrixManager.matrixBig;
+
 void lightPixel(int pixel, bool turnoff = false){
 	if(turnoff){
-		LEDmatrix.drawPixel(::pixel, 0);
+		matrix->drawPixel(::pixel, MatrixPixel::Off);
 	}
 
 	pixel = max(pixel, 0);
 	pixel = min(pixel, 16 * 9 - 1);
 
-	LEDmatrix.drawPixel(pixel, 255);
+	matrix->drawPixel(pixel, MatrixPixel::White);
 
 	::pixel = pixel;
 }
@@ -66,7 +68,8 @@ MixSystem* mix = nullptr;
 
 void setup(){
 	Serial.begin(115200);
-
+	JayD.begin();
+/*
 	pinMode(25, OUTPUT);
 	digitalWrite(25, HIGH);
 
@@ -108,9 +111,9 @@ void setup(){
 	if(!LEDmatrix.begin(I2C_SDA, I2C_SCL)){
 		Serial.println("couldn't start matrix");
 		for(;;);
-	}
+	}*/
 
-	Settings.begin();
+/*	Settings.begin();
 	LEDmatrix.setBrightness(80.0f * (float) Settings.get().brightnessLevel / 255.0f);
 
 	LoopManager::addListener(&Sched);
@@ -122,24 +125,24 @@ void setup(){
 	mix->setMix(128);
 	mix->setVolume(0, 50);
 	mix->setVolume(1, 50);
-	mix->start();
+	mix->start();*/
 
-	/*InputJayD* input = new InputJayD();
+/*	InputJayD* input = new InputJayD();
 	input->begin();
 	LoopManager::addListener(input);
 
-	digitalWrite(JDNV_PIN_RESET, LOW);*/
+	digitalWrite(JDNV_PIN_RESET, LOW);
 
-	/*LEDMatrix.begin(26, 27);
+	LEDMatrix.begin(26, 27);
 	LEDMatrix.clear();
-	LEDMatrix.push();
+	LEDMatrix.push();*/
 
 	InputJayD::getInstance()->setEncoderMovedCallback(1, [](int8_t value){
 		lightPixel(pixel + value, true);
-		LEDMatrix.push();
+		matrix->push();
 
 		Serial.printf("%d\n", pixel);
-	});*/
+	});
 }
 
 int i = 0;
