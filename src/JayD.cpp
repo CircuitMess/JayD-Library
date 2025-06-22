@@ -34,6 +34,8 @@ void JayDImpl::begin(){
 
 	CircuitOS::gd_set_old_transparency(true);
 
+	initVer();
+
 	SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI, SPI_SS);
 	SPI.setFrequency(60000000);
 	if(!SD.begin(SD_CS, SPI)){
@@ -66,6 +68,20 @@ void JayDImpl::begin(){
 
 	Settings.begin();
 	LEDmatrix.setBrightness(80.0f * (float) Settings.get().brightnessLevel / 255.0f);
+}
+
+void JayDImpl::initVer(int override){
+	if(verInited) return;
+	verInited = true;
+
+	static constexpr Ver map[] = { Ver::v1_0, Ver::v1_1, Ver::v1_2 };
+	const auto hw = override == -1 ? HWRevision::get() : override;
+
+	if(hw >= 0 && hw < sizeof(map) / sizeof(map[0])){
+		ver = map[hw];
+	}else{
+		verInited = false;
+	}
 }
 
 Display& JayDImpl::getDisplay(){
