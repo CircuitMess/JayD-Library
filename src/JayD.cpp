@@ -1,6 +1,7 @@
 #include "JayD.h"
 #include <Devices/Matrix/MatrixOutputBuffer.h>
 #include <Util/HWRevision.h>
+#include <Util/gifdec.h>
 
 const i2s_pin_config_t i2s_pin_config = {
 		.bck_io_num = I2S_BCK,
@@ -31,6 +32,8 @@ void JayDImpl::begin(){
 	WiFi.mode(WIFI_OFF);
 	btStop();
 
+	CircuitOS::gd_set_old_transparency(true);
+
 	SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI, SPI_SS);
 	SPI.setFrequency(60000000);
 	if(!SD.begin(SD_CS, SPI)){
@@ -40,7 +43,9 @@ void JayDImpl::begin(){
 		Serial.println("SPIFFS error");
 	}
 
-	if(HWRevision::get() == 1){
+	if(HWRevision::get() == 2){
+		display.getTft()->setPanel(JayDDisplay::panel3());
+	}else if(HWRevision::get() == 1){
 		display.getTft()->setPanel(JayDDisplay::panel2());
 	}else{
 		display.getTft()->setPanel(JayDDisplay::panel1());
