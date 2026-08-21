@@ -13,7 +13,7 @@ MixSystem::MixSystem(const fs::File& f1, const fs::File& f2) : MixSystem(){
 	open(1, f2);
 }
 
-MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 16 * 1024, this), queue(6, sizeof(MixRequest*)){
+MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 16 * 1024, this), queue(requestCapacity, sizeof(uint8_t)){
 	mixer = new Mixer();
 
 	for(int i = 0; i < 2; i++){
@@ -64,28 +64,160 @@ MixSystem::~MixSystem(){
 		delete speed[i];
 
 		delete source[i];
+		delete retiredSource[i];
 	}
 }
 
 bool MixSystem::open(uint8_t c, const fs::File& file){
-	this->file[c] = file;
-	if(!file){
+	if(c >= 2 || !file){
 		Serial.println("MixSystem: file not open");
 		return false;
 	}
 
-	delete source[c];
-	auto source = this->source[c] = new SourceAAC(file);
+	auto newSource = new SourceAAC(file);
+	if(newSource == nullptr){
+		Serial.println("MixSystem: source allocation failed");
+		return false;
+	}
+	newSource->setRepeat(true);
+	while(!newSource->isReadReady()) Sched.loop(0);
+	return replaceSource(c, newSource);
+}
 
-	source->setRepeat(true);
-
-	if(speed[c]){
-		speed[c]->setSource(source);
-	}else{
-		effector[c]->setSource(source);
+bool MixSystem::replaceSource(uint8_t c, SourceAAC* newSource){
+	if(c >= 2 || newSource == nullptr){
+		delete newSource;
+		return false;
 	}
 
+	sourceMutex.lock();
+	if(retiredSource[c] != nullptr){
+		sourceMutex.unlock();
+		delete newSource;
+		return false;
+	}
+	newSource->setVolume(volume[c]);
+	auto oldSource = source[c];
+	source[c] = newSource;
+	if(speed[c]){
+		speed[c]->setSource(newSource);
+	}else{
+		effector[c]->setSource(newSource);
+	}
+	retiredSource[c] = oldSource;
+	sourceMutex.unlock();
+
 	return true;
+}
+
+bool MixSystem::openChannel(uint8_t channel, const fs::File& file){
+	if(channel >= 2 || !file) return false;
+
+	if(!out->isRunning()){
+		return open(channel, file);
+	}
+
+	cleanupRetiredSources();
+	sourceMutex.lock();
+	const bool canReplace = retiredSource[channel] == nullptr;
+	sourceMutex.unlock();
+	if(!canReplace) return false;
+
+	const int8_t requestIndex = reserveRequest({ MixRequest::OPEN, channel });
+	if(requestIndex < 0) return false;
+
+	auto newSource = new SourceAAC(file);
+	if(newSource == nullptr){
+		releaseRequest(requestIndex);
+		return false;
+	}
+	newSource->setRepeat(true);
+	while(!newSource->isReadReady()) Sched.loop(0);
+	requests[requestIndex].value = reinterpret_cast<size_t>(newSource);
+
+	if(sendRequest(requestIndex)) return true;
+
+	delete newSource;
+	releaseRequest(requestIndex);
+	return false;
+}
+
+void MixSystem::_openChannel(uint8_t channel, SourceAAC* newSource){
+	if(channel >= 2 || newSource == nullptr){
+		delete newSource;
+		return;
+	}
+
+	const bool wasPaused = mixer->isChannelPaused(channel);
+	mixer->pauseChannel(channel);
+	if(replaceSource(channel, newSource) || !wasPaused) mixer->resumeChannel(channel);
+}
+
+int8_t MixSystem::reserveRequest(const MixRequest& request){
+	queueMutex.lock();
+	for(uint8_t i = 0; i < requestCapacity; i++){
+		if(requestUsed[i] && request.type == MixRequest::OPEN &&
+		   requests[i].type == MixRequest::OPEN && requests[i].channel == request.channel){
+			queueMutex.unlock();
+			return -1;
+		}
+	}
+
+	for(uint8_t i = 0; i < requestCapacity; i++){
+		if(requestUsed[i]) continue;
+		requests[i] = request;
+		requestUsed[i] = true;
+		queueMutex.unlock();
+		return i;
+	}
+	queueMutex.unlock();
+	return -1;
+}
+
+bool MixSystem::sendRequest(uint8_t index){
+	if(index >= requestCapacity || !requestUsed[index]) return false;
+	return queue.send(&index);
+}
+
+bool MixSystem::enqueueRequest(const MixRequest& request){
+	const int8_t index = reserveRequest(request);
+	if(index < 0) return false;
+	if(sendRequest(index)) return true;
+	releaseRequest(index);
+	return false;
+}
+
+void MixSystem::releaseRequest(uint8_t index){
+	if(index >= requestCapacity) return;
+	queueMutex.lock();
+	requests[index] = {};
+	requestUsed[index] = false;
+	queueMutex.unlock();
+}
+
+void MixSystem::clearRequests(){
+	uint8_t index;
+	while(queue.count()){
+		if(!queue.receive(&index)) break;
+		if(index < requestCapacity && requestUsed[index] && requests[index].type == MixRequest::OPEN){
+			delete reinterpret_cast<SourceAAC*>(requests[index].value);
+		}
+		releaseRequest(index);
+	}
+}
+
+void MixSystem::cleanupRetiredSources(){
+	SourceAAC* ready[2] = {};
+	sourceMutex.lock();
+	for(uint8_t channel = 0; channel < 2; channel++){
+		if(retiredSource[channel] && retiredSource[channel]->isReadReady()){
+			ready[channel] = retiredSource[channel];
+			retiredSource[channel] = nullptr;
+		}
+	}
+	sourceMutex.unlock();
+	delete ready[0];
+	delete ready[1];
 }
 
 void MixSystem::audioThread(Task* task){
@@ -94,43 +226,47 @@ void MixSystem::audioThread(Task* task){
 	Serial.println("-- MixSystem started --");
 
 	while(task->running){
-		MixRequest* request;
+		uint8_t requestIndex;
 		while(system->queue.count()){
-			system->queue.receive(&request);
+			if(!system->queue.receive(&requestIndex)) break;
+			if(requestIndex >= requestCapacity || !system->requestUsed[requestIndex]) continue;
+			const MixRequest request = system->requests[requestIndex];
 
-			switch(request->type){
+			switch(request.type){
 				case MixRequest::ADD_SPEED:
-					system->_addSpeed(request->channel);
+					system->_addSpeed(request.channel);
 					break;
 				case MixRequest::REMOVE_SPEED:
-					system->_removeSpeed(request->channel);
+					system->_removeSpeed(request.channel);
 					break;
 				case MixRequest::SET_SPEED:
-					system->_setSpeed(request->channel, request->value);
+					system->_setSpeed(request.channel, request.value);
 					break;
 				case MixRequest::SET_EFFECT:
-					system->_setEffect(request->channel, request->slot, static_cast<EffectType>(request->value));
+					system->_setEffect(request.channel, request.slot, static_cast<EffectType>(request.value));
 					break;
 				case MixRequest::SET_EFFECT_INTENSITY:
-					system->_setEffectIntensity(request->channel, request->slot, request->value);
+					system->_setEffectIntensity(request.channel, request.slot, request.value);
 					break;
 				case MixRequest::SET_INFO:
-					system->_setInfoGenerator(request->channel, (InfoGenerator*) request->value);
+					system->_setInfoGenerator(request.channel, reinterpret_cast<InfoGenerator*>(request.value));
 					break;
 				case MixRequest::SET_SEEK:
-					system->_seekChannel(request->channel, (uint16_t) request->value);
+					system->_seekChannel(request.channel, static_cast<uint16_t>(request.value));
 					break;
 				case MixRequest::RECORD:
-					if(request->value == system->isRecording()) break;
-					if(request->value){
+					if(request.value == system->isRecording()) break;
+					if(request.value){
 						system->_startRecording();
 					}else{
 						system->_stopRecording();
 					}
 					break;
+				case MixRequest::OPEN:
+					system->_openChannel(request.channel, reinterpret_cast<SourceAAC*>(request.value));
+					break;
 			}
-
-			delete request;
+			system->releaseRequest(requestIndex);
 		}
 
 		if(system->out->isRunning()){
@@ -154,18 +290,19 @@ void MixSystem::start(){
 }
 
 void MixSystem::stop(){
-	if(!running) return;
-
-	audioTask.stop();
-
-	while(!audioTask.isStopped()){
-		Sched.loop(0);
+	if(!audioTask.isStopped()){
+		audioTask.stop();
+		while(!audioTask.isStopped()){
+			Sched.loop(0);
+		}
 	}
 
+	running = false;
 	_stopRecording();
 	fileOut.close();
 
 	out->stop();
+	clearRequests();
 }
 
 bool MixSystem::isRunning(){
@@ -173,21 +310,49 @@ bool MixSystem::isRunning(){
 }
 
 uint16_t MixSystem::getDuration(uint8_t c){
-	if(c >= 2 || !source[c]) return 0;
-	return source[c]->getDuration();
+	if(c >= 2) return 0;
+	cleanupRetiredSources();
+	sourceMutex.lock();
+	uint16_t duration = source[c] ? source[c]->getDuration() : 0;
+	sourceMutex.unlock();
+	return duration;
 }
 
 uint16_t MixSystem::getElapsed(uint8_t c){
-	if(c >= 2 || !source[c]) return 0;
+	if(c >= 2) return 0;
+	cleanupRetiredSources();
 	if(seekPending[c] > 0){
 		return seek[c];
 	}
-	return source[c]->getElapsed();
+	sourceMutex.lock();
+	uint16_t elapsed = source[c] ? source[c]->getElapsed() : 0;
+	sourceMutex.unlock();
+	return elapsed;
+}
+
+bool MixSystem::hasChannel(uint8_t c){
+	if(c >= 2) return false;
+	cleanupRetiredSources();
+	sourceMutex.lock();
+	bool loaded = source[c] != nullptr;
+	sourceMutex.unlock();
+	return loaded;
+}
+
+uint8_t MixSystem::getVolume(uint8_t c){
+	return c < 2 ? volume[c] : 0;
+}
+
+uint8_t MixSystem::getMix(){
+	return mixer ? mixer->getMixRatio() : 128;
 }
 
 void MixSystem::setVolume(uint8_t c, uint8_t volume){
-	if(c >= 2 || !source[c]) return;
-	source[c]->setVolume(volume);
+	if(c >= 2) return;
+	this->volume[c] = volume;
+	sourceMutex.lock();
+	if(source[c]) source[c]->setVolume(volume);
+	sourceMutex.unlock();
 }
 
 void MixSystem::setMix(uint8_t ratio){
@@ -201,9 +366,7 @@ void MixSystem::addSpeed(uint8_t channel){
 		return;
 	}
 
-	if(queue.count() == queue.getQueueSize()) return;
-	MixRequest* request = new MixRequest({ MixRequest::ADD_SPEED, channel });
-	queue.send(&request);
+	enqueueRequest({ MixRequest::ADD_SPEED, channel });
 }
 
 void MixSystem::removeSpeed(uint8_t channel){
@@ -212,9 +375,7 @@ void MixSystem::removeSpeed(uint8_t channel){
 		return;
 	}
 
-	if(queue.count() == queue.getQueueSize()) return;
-	MixRequest* request = new MixRequest({ MixRequest::REMOVE_SPEED, channel });
-	queue.send(&request);
+	enqueueRequest({ MixRequest::REMOVE_SPEED, channel });
 }
 
 void MixSystem::setSpeed(uint8_t channel, uint8_t speed){
@@ -223,9 +384,7 @@ void MixSystem::setSpeed(uint8_t channel, uint8_t speed){
 		return;
 	}
 
-	if(queue.count() == queue.getQueueSize()) return;
-	MixRequest* request = new MixRequest({ MixRequest::SET_SPEED, channel, 0, speed });
-	queue.send(&request);
+	enqueueRequest({ MixRequest::SET_SPEED, channel, 0, speed });
 }
 
 void MixSystem::setEffect(uint8_t channel, uint8_t slot, EffectType type){
@@ -234,9 +393,7 @@ void MixSystem::setEffect(uint8_t channel, uint8_t slot, EffectType type){
 		return;
 	}
 
-	if(queue.count() == queue.getQueueSize()) return;
-	MixRequest* request = new MixRequest({ MixRequest::SET_EFFECT, channel, slot, static_cast<uint8_t>(type) });
-	queue.send(&request);
+	enqueueRequest({ MixRequest::SET_EFFECT, channel, slot, static_cast<uint8_t>(type) });
 }
 
 void MixSystem::setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intensity){
@@ -245,13 +402,11 @@ void MixSystem::setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intens
 		return;
 	}
 
-	if(queue.count() == queue.getQueueSize()) return;
-	MixRequest* request = new MixRequest({ MixRequest::SET_EFFECT_INTENSITY, channel, slot, intensity });
-	queue.send(&request);
+	enqueueRequest({ MixRequest::SET_EFFECT_INTENSITY, channel, slot, intensity });
 }
 
 void MixSystem::_addSpeed(uint8_t c){
-	if(c >= 2 || !effector[c] || speed[c]) return;
+	if(c >= 2 || !effector[c] || !source[c] || speed[c]) return;
 	auto speed = this->speed[c] = new SpeedModifier(source[c]);
 	effector[c]->setSource(speed);
 }
@@ -309,9 +464,7 @@ void MixSystem::setChannelInfo(uint8_t channel, InfoGenerator* channelInfoGen){
 		return;
 	}
 
-	if(queue.count() == queue.getQueueSize()) return;
-	MixRequest* request = new MixRequest({ MixRequest::SET_INFO, channel, 0, (size_t) channelInfoGen });
-	queue.send(&request);
+	enqueueRequest({ MixRequest::SET_INFO, channel, 0, reinterpret_cast<size_t>(channelInfoGen) });
 }
 
 void MixSystem::pauseChannel(uint8_t channel){
@@ -326,6 +479,8 @@ void MixSystem::resumeChannel(uint8_t channel){
 }
 
 void MixSystem::seekChannel(uint8_t channel, uint16_t time){
+	if(channel >= 2) return;
+
 	if(!out->isRunning()){
 		_seekChannel(channel, time);
 		return;
@@ -333,19 +488,14 @@ void MixSystem::seekChannel(uint8_t channel, uint16_t time){
 
 	seek[channel] = time;
 	seekPending[channel]++;
-
-	if(queue.count() == queue.getQueueSize()) return;
-	MixRequest* request = new MixRequest({ MixRequest::SET_SEEK, channel, 0, time });
-	queue.send(&request);
+	if(!enqueueRequest({ MixRequest::SET_SEEK, channel, 0, time })) seekPending[channel]--;
 }
 
 void MixSystem::_seekChannel(uint8_t channel, uint16_t time){
 	if(channel > 1) return;
+	if(seekPending[channel] > 0) seekPending[channel]--;
+	if(!source[channel]) return;
 
-	if(i2s->isRunning()){
-		seekPending[channel]--;
-		//i2s_zero_dma_buffer((i2s_port_t) 0);
-	}
 	source[channel]->seek(time, SeekSet);
 }
 
@@ -359,8 +509,7 @@ void MixSystem::startRecording(){
 		return;
 	}
 
-	MixRequest* request = new MixRequest({ MixRequest::RECORD, 0, 0, 1 });
-	queue.send(&request);
+	enqueueRequest({ MixRequest::RECORD, 0, 0, 1 });
 }
 
 void MixSystem::stopRecording(){
@@ -369,8 +518,7 @@ void MixSystem::stopRecording(){
 		return;
 	}
 
-	MixRequest* request = new MixRequest({ MixRequest::RECORD, 0, 0, 0 });
-	queue.send(&request);
+	enqueueRequest({ MixRequest::RECORD, 0, 0, 0 });
 }
 
 void MixSystem::_startRecording(){
@@ -410,5 +558,8 @@ bool MixSystem::isChannelPaused(uint8_t channel){
 }
 
 void MixSystem::setChannelDoneCallback(uint8_t channel, void(*callback)()) {
-	source[channel]->setSongDoneCallback(callback);
+	if(channel >= 2) return;
+	sourceMutex.lock();
+	if(source[channel]) source[channel]->setSongDoneCallback(callback);
+	sourceMutex.unlock();
 }

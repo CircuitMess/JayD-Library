@@ -33,6 +33,7 @@ public:
 
 	void setRepeat(bool repeat);
 	void setSongDoneCallback(void (*callback)());
+	bool isReadReady() const;
 
 private:
 	fs::File file;
