@@ -7,11 +7,13 @@
 #include <aacenc_lib.h>
 #include <Buffer/DataBuffer.h>
 #include "../Services/SDScheduler.h"
+#include "RecordingFinalize.h"
 #include "WavHeader.h"
 
 #define OUTWAV_BUFSIZE 2 * 1024 * NUM_CHANNELS
 #define OUTWAV_WRITESIZE 1 * 1024 * NUM_CHANNELS // should be smaller than BUFSIZE
 #define OUTWAV_BUFCOUNT 16
+#define OUTWAV_FINALIZE_QUEUE_FAILURES 32
 
 enum class RecordingError : uint8_t {
 	NONE,
@@ -37,10 +39,14 @@ public:
 	void finish();
 	void service();
 	bool isFinalized() const;
+	bool isPrepared() const;
+	bool isFileValid() const;
+	void invalidateFile();
 	RecordingError getError() const;
 	uint32_t getBytesWritten() const;
 	uint32_t getDroppedBytes() const;
 	uint32_t getDurationMs() const;
+	uint8_t getFinalizeQueueRetries() const;
 
 protected:
 	void output(size_t numSamples) override;
@@ -62,13 +68,17 @@ private:
 	DataBuffer* outBuffers[OUTWAV_BUFCOUNT] = { nullptr };
 	std::vector<uint8_t> freeBuffers;
 
-	enum class FinalizeStage : uint8_t { DONE, ACTIVE, DRAIN, SEEK, HEADER };
+	enum class FinalizeStage : uint8_t { DONE, ACTIVE, DRAIN, SEEK, HEADER_QUEUE, HEADER };
 	FinalizeStage finalizeStage = FinalizeStage::DONE;
 	SDResult* finalizeResult = nullptr;
 	WavHeader header = {};
+	bool fileValid = false;
+	uint8_t finalizeQueueRetries = 0;
 
 	bool writeInitialHeader();
 	bool queueFinalizeJob(SDJob::Type type);
+	FinalizeEnqueueResult tryQueueFinalizeJob(SDJob::Type type, FinalizeStage queuedStage);
+	void failFinalize();
 	void fail(RecordingError recordingError);
 };
 
