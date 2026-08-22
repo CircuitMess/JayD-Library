@@ -76,4 +76,19 @@ int main(){
 	assert(swapped.getRate() == SpeedModifier::MaxRate);
 	assert(swapped.generate(output) == 256);
 	for(size_t i = 0; i < 256; i++) assert(output[i] == 200);
+
+	// MixSystem calls reset() after a channel seek to discard the stale
+	// resampling position, but must not lose the DJ's chosen rate. This is
+	// also the exact spot where cherry-picking the deck-rate rewrite (Q16.16
+	// sourcePosition) together with the AAC-timing seek/reset glue silently
+	// left reset() referencing the removed float `remainder` field.
+	FakeSource seekSource(500, 1);
+	SpeedModifier seeking(&seekSource);
+	seeking.setRate(SpeedModifier::MaxRate);
+	assert(seeking.generate(output) == 256);
+	assert(seeking.getCurrentRate() == SpeedModifier::MaxRate);
+	seeking.reset();
+	assert(seeking.getRate() == SpeedModifier::MaxRate);
+	assert(seeking.getCurrentRate() == SpeedModifier::MaxRate);
+	assert(seeking.generate(output) == 256);
 }
