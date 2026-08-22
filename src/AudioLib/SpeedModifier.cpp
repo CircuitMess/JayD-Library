@@ -115,5 +115,5 @@ void SpeedModifier::setSource(Source* source){
 
 void SpeedModifier::reset(){
 	dataBuffer->clear();
-	remainder = 0;
+	sourcePosition = 0;
 }
