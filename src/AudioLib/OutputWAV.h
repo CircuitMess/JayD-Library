@@ -40,6 +40,7 @@ public:
 	void service();
 	bool isFinalized() const;
 	bool isPrepared() const;
+	bool isReady() const;
 	bool isFileValid() const;
 	void invalidateFile();
 	RecordingError getError() const;
@@ -68,16 +69,27 @@ private:
 	DataBuffer* outBuffers[OUTWAV_BUFCOUNT] = { nullptr };
 	std::vector<uint8_t> freeBuffers;
 
-	enum class FinalizeStage : uint8_t { DONE, ACTIVE, DRAIN, SEEK, HEADER_QUEUE, HEADER };
+	enum class FinalizeStage : uint8_t {
+		DONE,
+		INIT_SEEK_QUEUE,
+		INIT_SEEK,
+		INIT_HEADER_QUEUE,
+		INIT_HEADER,
+		ACTIVE,
+		DRAIN,
+		SEEK,
+		HEADER_QUEUE,
+		HEADER
+	};
 	FinalizeStage finalizeStage = FinalizeStage::DONE;
 	SDResult* finalizeResult = nullptr;
 	WavHeader header = {};
 	bool fileValid = false;
 	uint8_t finalizeQueueRetries = 0;
 
-	bool writeInitialHeader();
 	bool queueFinalizeJob(SDJob::Type type);
 	FinalizeEnqueueResult tryQueueFinalizeJob(SDJob::Type type, FinalizeStage queuedStage);
+	void failInitialize(RecordingError recordingError);
 	void failFinalize();
 	void fail(RecordingError recordingError);
 };

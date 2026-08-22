@@ -62,5 +62,60 @@ int main(){
 	assert(applied.find("fsOut->begin") != std::string::npos);
 	assert(applied.find("fsOut->invalidateFile") != std::string::npos);
 	assert(applied.find("recordingApplied = true") != std::string::npos);
+	assert(applied.find("out->addOutput") == std::string::npos);
+	assert(applied.find("while(") == std::string::npos);
+	assert(applied.find("Sched.loop") == std::string::npos);
+	assert(applied.find("delayMicroseconds") == std::string::npos);
+
+	std::ifstream wavFile("src/AudioLib/OutputWAV.cpp");
+	assert(wavFile.good());
+	const std::string wavSource(
+			(std::istreambuf_iterator<char>(wavFile)),
+			std::istreambuf_iterator<char>()
+	);
+	const size_t beginBegin = wavSource.find("bool OutputWAV::begin(");
+	const size_t beginEnd = wavSource.find("void OutputWAV::finish()", beginBegin);
+	assert(beginBegin != std::string::npos);
+	assert(beginEnd != std::string::npos);
+	const std::string begin = wavSource.substr(beginBegin, beginEnd - beginBegin);
+	assert(begin.find("while(") == std::string::npos);
+	assert(begin.find("Sched.loop") == std::string::npos);
+	const size_t wavServiceBegin = wavSource.find("void OutputWAV::service()");
+	const size_t wavServiceEnd = wavSource.find("bool OutputWAV::isFinalized()", wavServiceBegin);
+	assert(wavServiceBegin != std::string::npos);
+	assert(wavServiceEnd != std::string::npos);
+	const std::string wavService =
+			wavSource.substr(wavServiceBegin, wavServiceEnd - wavServiceBegin);
+	assert(wavService.find("while(") == std::string::npos);
+	assert(wavService.find("Sched.loop") == std::string::npos);
+	assert(wavSource.find("FinalizeStage::INIT_SEEK_QUEUE") != std::string::npos);
+	assert(wavSource.find("FinalizeStage::INIT_HEADER_QUEUE") != std::string::npos);
+	assert(wavSource.find("if(finalizeResult == nullptr) return;") != std::string::npos);
+
+	const size_t serviceBegin = source.find("void MixSystem::serviceRecording()");
+	const size_t serviceEnd = source.find("void MixSystem::finishRecordingSync()", serviceBegin);
+	assert(serviceBegin != std::string::npos);
+	assert(serviceEnd != std::string::npos);
+	const std::string service = source.substr(serviceBegin, serviceEnd - serviceBegin);
+	assert(service.find("fsOut->isReady()") != std::string::npos);
+	assert(service.find("recordingMutex.lock()") != std::string::npos);
+	assert(service.find("out->addOutput") != std::string::npos);
+
+	const size_t stopBegin = source.find("bool MixSystem::stopRecording()");
+	const size_t stopEnd = source.find("void MixSystem::_startRecording()", stopBegin);
+	assert(stopBegin != std::string::npos);
+	assert(stopEnd != std::string::npos);
+	const std::string stop = source.substr(stopBegin, stopEnd - stopBegin);
+	assert(stop.find("recordingMutex.lock()") != std::string::npos);
+	assert(stop.find("recordingState = previousState") == std::string::npos);
+
+	std::ifstream schedulerFile("src/Services/SDScheduler.cpp");
+	assert(schedulerFile.good());
+	const std::string scheduler(
+			(std::istreambuf_iterator<char>(schedulerFile)),
+			std::istreambuf_iterator<char>()
+	);
+	assert(scheduler.find("xQueueSend(jobs, &job, 0)") != std::string::npos);
+	assert(scheduler.find("portMAX_DELAY") == std::string::npos);
 	return 0;
 }

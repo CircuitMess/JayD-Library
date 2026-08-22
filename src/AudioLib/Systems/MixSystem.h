@@ -109,6 +109,7 @@ private:
 	Queue queue;
 	Mutex queueMutex;
 	Mutex sourceMutex;
+	Mutex recordingMutex;
 	MixRequest requests[requestCapacity] = {};
 	bool requestUsed[requestCapacity] = {};
 
