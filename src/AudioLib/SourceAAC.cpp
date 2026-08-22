@@ -125,13 +125,17 @@ void SourceAAC::addReadJob(bool full){
 		return;
 	}
 
-	Sched.addJob(new SDJob{
+	if(!Sched.addJob(new SDJob{
 						 .type = SDJob::SD_READ,
 						 .file = file,
 						 .size = size,
 						 .buffer = buf,
 						 .result = &readResult
-				 });
+				 })){
+		// Queue full: leave the read retryable rather than claiming data is in flight.
+		free(buf);
+		return;
+	}
 
 	readJobPending = true;
 }
@@ -388,6 +392,17 @@ bool SourceAAC::seekSourceFrame(uint64_t frame){
 		offset = frameIndex[index].offset;
 		indexedFrame = frameIndex[index].sourceFrame;
 	}
+	// Enqueue the seek before touching any state: if it can't be queued, the file
+	// position never moves, so leave elapsed/decoded state and any in-flight read
+	// untouched and fail cleanly so the caller can retry.
+	if(!Sched.addJob(new SDJob{
+			.type = SDJob::SD_SEEK,
+			.file = file,
+			.size = offset,
+			.buffer = nullptr,
+			.result = nullptr
+	})) return false;
+
 	if(readJobPending && readResult != nullptr){
 		free(readResult->buffer);
 		delete readResult;
@@ -397,13 +412,6 @@ bool SourceAAC::seekSourceFrame(uint64_t frame){
 	}else if(readJobPending){
 		discardPendingRead = true;
 	}
-	Sched.addJob(new SDJob{
-			.type = SDJob::SD_SEEK,
-			.file = file,
-			.size = offset,
-			.buffer = nullptr,
-			.result = nullptr
-	});
 	portENTER_CRITICAL(&timingMux);
 	elapsedSourceFrames = frame;
 	portEXIT_CRITICAL(&timingMux);
