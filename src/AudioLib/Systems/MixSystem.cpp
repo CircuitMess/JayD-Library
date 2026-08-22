@@ -226,6 +226,7 @@ void MixSystem::audioThread(Task* task){
 	Serial.println("-- MixSystem started --");
 
 	while(task->running){
+		system->serviceRecording();
 		uint8_t requestIndex;
 		while(system->queue.count()){
 			if(!system->queue.receive(&requestIndex)) break;
@@ -262,7 +263,6 @@ void MixSystem::audioThread(Task* task){
 					system->_seekChannel(request.channel, request.value);
 					break;
 				case MixRequest::RECORD:
-					if(request.value == system->isRecording()) break;
 					if(request.value){
 						system->_startRecording();
 					}else{
@@ -279,13 +279,14 @@ void MixSystem::audioThread(Task* task){
 		if(system->out->isRunning()){
 			Profiler.init();
 			system->out->loop(0);
+			system->serviceRecording();
 			Profiler.report();
 		}else{
 			system->running = false;
 		}
 	}
 
-	system->fsOut->stop();
+	system->_stopRecording();
 }
 
 void MixSystem::start(){
@@ -306,7 +307,7 @@ void MixSystem::stop(){
 
 	running = false;
 	_stopRecording();
-	fileOut.close();
+	finishRecordingSync();
 
 	out->stop();
 	clearRequests();
@@ -626,56 +627,133 @@ void MixSystem::_seekChannel(uint8_t channel, uint64_t frame){
 }
 
 bool MixSystem::isRecording(){
-	return out->getOutput(1) != nullptr;
+	return recordingState == RecordingState::RECORDING;
 }
 
-void MixSystem::startRecording(){
-	if(!out->isRunning()){
-		_startRecording();
-		return;
+RecordingStatus MixSystem::getRecordingStatus() const{
+	const RecordingError outputError = fsOut->getError();
+	return {
+			recordingState,
+			recordingError == RecordingError::NONE ? outputError : recordingError,
+			fsOut->getBytesWritten(),
+			fsOut->getDurationMs(),
+			fsOut->getDroppedBytes()
+	};
+}
+
+bool MixSystem::startRecording(){
+	if(recordingState == RecordingState::STARTING ||
+	   recordingState == RecordingState::RECORDING ||
+	   recordingState == RecordingState::STOPPING) return false;
+
+	recordingState = RecordingState::STARTING;
+	recordingError = RecordingError::NONE;
+	if(SD.cardType() == CARD_NONE){
+		recordingError = RecordingError::SD_UNAVAILABLE;
+		recordingState = RecordingState::FAILED;
+		return false;
 	}
 
-	enqueueRequest({ MixRequest::RECORD, 0, 0, 1 });
-}
-
-void MixSystem::stopRecording(){
-	if(!out->isRunning()){
-		_stopRecording();
-		return;
-	}
-
-	enqueueRequest({ MixRequest::RECORD, 0, 0, 0 });
-}
-
-void MixSystem::_startRecording(){
-	if(isRecording()) return;
-
-	if(SD.exists(recordPath)){
-		SD.remove(recordPath);
+	if(SD.exists(recordPath) && !SD.remove(recordPath)){
+		recordingError = RecordingError::SD_UNAVAILABLE;
+		recordingState = RecordingState::FAILED;
+		return false;
 	}
 
 	fileOut = SD.open(recordPath, "w");
 	if(!fileOut){
 		Serial.printf("Failed opening %s for writing\n", recordPath);
-		return;
+		recordingError = RecordingError::OPEN_FAILED;
+		recordingState = RecordingState::FAILED;
+		return false;
 	}
 
-	fsOut->setFile(fileOut);
+	if(!fsOut->begin(fileOut)){
+		recordingError = fsOut->getError();
+		recordingState = RecordingState::FAILED;
+		fileOut.close();
+		return false;
+	}
 
+	if(!out->isRunning()){
+		_startRecording();
+		return true;
+	}
+
+	if(enqueueRequest({ MixRequest::RECORD, 0, 0, 1 })) return true;
+
+	recordingError = RecordingError::QUEUE_FULL;
+	recordingState = RecordingState::STOPPING;
+	fsOut->finish();
+	finishRecordingSync();
+	return false;
+}
+
+bool MixSystem::stopRecording(){
+	if(recordingState == RecordingState::IDLE ||
+	   recordingState == RecordingState::COMPLETE ||
+	   recordingState == RecordingState::FAILED ||
+	   recordingState == RecordingState::STOPPING) return true;
+
+	const RecordingState previousState = recordingState;
+	recordingState = RecordingState::STOPPING;
+	if(!out->isRunning()){
+		_stopRecording();
+		finishRecordingSync();
+		return recordingState == RecordingState::COMPLETE;
+	}
+
+	if(enqueueRequest({ MixRequest::RECORD, 0, 0, 0 })) return true;
+	recordingState = previousState;
+	return false;
+}
+
+void MixSystem::_startRecording(){
+	if(out->getOutput(1) != nullptr) return;
+	const bool stopping = recordingState == RecordingState::STOPPING;
 	out->addOutput(fsOut);
-
 	if(out->isRunning()){
 		fsOut->start();
 	}
+	if(!stopping) recordingState = RecordingState::RECORDING;
 }
 
 void MixSystem::_stopRecording(){
-	if(!isRecording()) return;
+	if(out->getOutput(1) != nullptr){
+		out->removeOutput(1);
+	}
+	if(fsOut->isRunning()){
+		fsOut->stop();
+	}else{
+		fsOut->finish();
+	}
+	if(recordingState == RecordingState::STARTING ||
+	   recordingState == RecordingState::RECORDING) recordingState = RecordingState::STOPPING;
+}
 
-	out->removeOutput(1);
+void MixSystem::serviceRecording(){
+	fsOut->service();
+	if(recordingState == RecordingState::RECORDING &&
+	   fsOut->getError() != RecordingError::NONE){
+		recordingState = RecordingState::STOPPING;
+		_stopRecording();
+	}
 
-	fsOut->stop();
+	if(recordingState != RecordingState::STOPPING || !fsOut->isFinalized()) return;
 	fileOut.close();
+	if(fsOut->getError() == RecordingError::NONE && recordingError == RecordingError::NONE){
+		recordingState = RecordingState::COMPLETE;
+	}else{
+		if(recordingError == RecordingError::NONE) recordingError = fsOut->getError();
+		recordingState = RecordingState::FAILED;
+	}
+}
+
+void MixSystem::finishRecordingSync(){
+	while(recordingState == RecordingState::STOPPING){
+		Sched.loop(0);
+		serviceRecording();
+	}
 }
 
 bool MixSystem::isChannelPaused(uint8_t channel){

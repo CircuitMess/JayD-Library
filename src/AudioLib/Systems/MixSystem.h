@@ -24,6 +24,23 @@ struct MixRequest {
 	uint64_t value;
 };
 
+enum class RecordingState : uint8_t {
+	IDLE,
+	STARTING,
+	RECORDING,
+	STOPPING,
+	COMPLETE,
+	FAILED
+};
+
+struct RecordingStatus {
+	RecordingState state;
+	RecordingError error;
+	uint32_t bytes;
+	uint32_t durationMs;
+	uint32_t droppedBytes;
+};
+
 class MixSystem {
 public:
 	MixSystem();
@@ -74,9 +91,12 @@ public:
 	void seekChannel(uint8_t channel, uint16_t time);
 	bool seekChannelSourceFrame(uint8_t channel, uint64_t frame);
 
-	void startRecording();
-	void stopRecording();
+	// Return values report whether the request was accepted. Poll status for
+	// asynchronous write/finalization failures.
+	bool startRecording();
+	bool stopRecording();
 	bool isRecording();
+	RecordingStatus getRecordingStatus() const;
 
 	void setChannelDoneCallback(uint8_t channel, void(*callback)());
 
@@ -101,6 +121,8 @@ private:
 	OutputI2S* i2s;
 	OutputWAV* fsOut;
 	OutputSplitter* out;
+	volatile RecordingState recordingState = RecordingState::IDLE;
+	volatile RecordingError recordingError = RecordingError::NONE;
 
 	SpeedModifier* speed[2] = { nullptr };
 
@@ -115,6 +137,8 @@ private:
 	void _seekChannel(uint8_t channel, uint64_t frame);
 	void _startRecording();
 	void _stopRecording();
+	void serviceRecording();
+	void finishRecordingSync();
 	void _openChannel(uint8_t channel, SourceAAC* source);
 	bool replaceSource(uint8_t channel, SourceAAC* source);
 	int8_t reserveRequest(const MixRequest& request);
