@@ -13,7 +13,7 @@ struct SDResult {
 };
 
 struct SDJob {
-	enum { SD_WRITE, SD_READ, SD_SEEK } type;
+	enum Type { SD_WRITE, SD_READ, SD_SEEK } type;
 	fs::File file;
 	size_t size;
 	uint8_t* buffer;
@@ -24,7 +24,7 @@ class SDScheduler : public LoopListener {
 public:
 	SDScheduler();
 
-	void addJob(SDJob *job);
+	bool addJob(SDJob *job);
 	void loop(uint micros) override;
 private:
 	Queue jobs;
