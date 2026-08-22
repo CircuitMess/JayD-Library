@@ -18,7 +18,7 @@
 #include "../OutputWAV.h"
 
 struct MixRequest {
-	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_EFFECT, SET_EFFECT_INTENSITY, SET_INFO, SET_SEEK, RECORD, OPEN } type;
+	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_RATE, NUDGE_RATE, SET_EFFECT, SET_EFFECT_INTENSITY, SET_INFO, SET_SEEK, RECORD, OPEN } type;
 	uint8_t channel;
 	uint8_t slot;
 	uint64_t value;
@@ -58,6 +58,9 @@ public:
 	void addSpeed(uint8_t channel);
 	void removeSpeed(uint8_t channel);
 	void setSpeed(uint8_t channel, uint8_t speed);
+	void setRate(uint8_t channel, SpeedModifier::Rate rate);
+	SpeedModifier::Rate getRate(uint8_t channel);
+	void nudgeRate(uint8_t channel, int32_t amount);
 	void setEffect(uint8_t channel, uint8_t slot, EffectType type);
 	void setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intensity);
 
@@ -104,6 +107,8 @@ private:
 	void _addSpeed(uint8_t channel);
 	void _removeSpeed(uint8_t channel);
 	void _setSpeed(uint8_t channel, uint8_t speed);
+	void _setRate(uint8_t channel, SpeedModifier::Rate rate);
+	void _nudgeRate(uint8_t channel, int32_t amount);
 	void _setEffect(uint8_t channel, uint8_t slot, EffectType type);
 	void _setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intensity);
 	void _setInfoGenerator(uint8_t channel, InfoGenerator* generator);

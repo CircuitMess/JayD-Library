@@ -242,6 +242,13 @@ void MixSystem::audioThread(Task* task){
 				case MixRequest::SET_SPEED:
 					system->_setSpeed(request.channel, request.value);
 					break;
+				case MixRequest::SET_RATE:
+					system->_setRate(request.channel, request.value);
+					break;
+				case MixRequest::NUDGE_RATE:
+					system->_nudgeRate(request.channel, request.slot ?
+						-static_cast<int32_t>(request.value) : static_cast<int32_t>(request.value));
+					break;
 				case MixRequest::SET_EFFECT:
 					system->_setEffect(request.channel, request.slot, static_cast<EffectType>(request.value));
 					break;
@@ -429,6 +436,38 @@ void MixSystem::setSpeed(uint8_t channel, uint8_t speed){
 	enqueueRequest({ MixRequest::SET_SPEED, channel, 0, speed });
 }
 
+void MixSystem::setRate(uint8_t channel, SpeedModifier::Rate rate){
+	if(!out->isRunning()){
+		_setRate(channel, rate);
+		return;
+	}
+
+	enqueueRequest({ MixRequest::SET_RATE, channel, 0, rate });
+}
+
+SpeedModifier::Rate MixSystem::getRate(uint8_t channel){
+	if(channel >= 2) return SpeedModifier::NeutralRate;
+	sourceMutex.lock();
+	const SpeedModifier::Rate rate = speed[channel] ? speed[channel]->getRate() : SpeedModifier::NeutralRate;
+	sourceMutex.unlock();
+	return rate;
+}
+
+void MixSystem::nudgeRate(uint8_t channel, int32_t amount){
+	const int32_t maxNudge = SpeedModifier::MaxRate - SpeedModifier::MinRate;
+	if(amount < -maxNudge) amount = -maxNudge;
+	if(amount > maxNudge) amount = maxNudge;
+
+	if(!out->isRunning()){
+		_nudgeRate(channel, amount);
+		return;
+	}
+
+	const bool negative = amount < 0;
+	const uint32_t magnitude = negative ? static_cast<uint32_t>(-amount) : amount;
+	enqueueRequest({ MixRequest::NUDGE_RATE, channel, negative, magnitude });
+}
+
 void MixSystem::setEffect(uint8_t channel, uint8_t slot, EffectType type){
 	if(!out->isRunning()){
 		_setEffect(channel, slot, type);
@@ -449,20 +488,40 @@ void MixSystem::setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intens
 
 void MixSystem::_addSpeed(uint8_t c){
 	if(c >= 2 || !effector[c] || !source[c] || speed[c]) return;
+	sourceMutex.lock();
 	auto speed = this->speed[c] = new SpeedModifier(source[c]);
 	effector[c]->setSource(speed);
+	sourceMutex.unlock();
 }
 
 void MixSystem::_removeSpeed(uint8_t c){
 	if(c >= 2 || !effector[c] || !speed[c]) return;
+	sourceMutex.lock();
 	effector[c]->setSource(source[c]);
 	delete speed[c];
 	speed[c] = nullptr;
+	sourceMutex.unlock();
 }
 
 void MixSystem::_setSpeed(uint8_t c, uint8_t modifier){
 	if(c >= 2 || !this->speed[c]) return;
+	sourceMutex.lock();
 	this->speed[c]->setModifier(modifier);
+	sourceMutex.unlock();
+}
+
+void MixSystem::_setRate(uint8_t c, SpeedModifier::Rate rate){
+	if(c >= 2 || !speed[c]) return;
+	sourceMutex.lock();
+	speed[c]->setRate(rate);
+	sourceMutex.unlock();
+}
+
+void MixSystem::_nudgeRate(uint8_t c, int32_t amount){
+	if(c >= 2 || !speed[c]) return;
+	sourceMutex.lock();
+	speed[c]->nudgeRate(amount);
+	sourceMutex.unlock();
 }
 
 void MixSystem::_setEffect(uint8_t c, uint8_t s, EffectType type){

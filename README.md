@@ -72,6 +72,15 @@ To compile the binary, and upload it according to the port set in CMakeLists.txt
 ```cmake --build . --target CMBuild```
 
 in the cmake directory.
+
+## Deck rate control
+
+`SpeedModifier` exposes a bounded Q16.16 rate (`0.5x` to `1.5x`, with `65536`
+as neutral). The legacy 0-255 API maps `127` to neutral. Rate changes ramp over
+at most 256 output samples and use linear interpolation without allocating in
+`generate()`. This is resampling, so pitch changes with rate; key lock and time
+stretching are not provided.
+
 # Used libraries and copyright notices
 [See NOTICE](https://github.com/CircuitMess/JayD-Library/blob/master/NOTICE.md)
 
