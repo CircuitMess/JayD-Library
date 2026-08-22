@@ -25,6 +25,32 @@ struct FrameIndexEntry {
 	uint32_t sourceFrame;
 };
 
+class EofNotification {
+public:
+	bool take(){
+		if(notified) return false;
+		notified = true;
+		return true;
+	}
+
+	void reset(){
+		notified = false;
+	}
+
+private:
+	bool notified = false;
+};
+
+inline bool requiredDecodeBytes(size_t rawBlocks, size_t bytesPerBlock,
+								size_t capacity, size_t& required){
+	if(rawBlocks == 0 || bytesPerBlock == 0 ||
+	   rawBlocks > SIZE_MAX / bytesPerBlock){
+		return false;
+	}
+	required = rawBlocks * bytesPerBlock;
+	return required <= capacity;
+}
+
 inline ParseResult parseHeader(const uint8_t* data, size_t size, Header& header){
 	static const uint32_t sampleRates[] = {
 			96000, 88200, 64000, 48000, 44100, 32000, 24000,

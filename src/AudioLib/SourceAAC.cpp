@@ -5,9 +5,8 @@
 #define AAC_READ_BUFFER 1024 * 64
 #define AAC_READ_CHUNK 1024 * 4 // should be bigger than min input
 #define AAC_DECODE_BUFFER 8192
-#define AAC_OUT_BUFFER 20480
+#define AAC_OUT_BUFFER 32768
 #define AAC_MAX_DECODED_BYTES 8192
-#define AAC_MAX_MONO_BLOCK_BYTES 4096
 #define AAC_INDEX_PSRAM_ENTRIES 16384
 #define AAC_INDEX_INTERNAL_ENTRIES 2048
 #define AAC_INDEX_READ_CHUNK 4096
@@ -93,6 +92,7 @@ void SourceAAC::close(){
 	sourceChannels = adtsChannelConfiguration = 0;
 	readEof = false;
 	discardPendingRead = false;
+	eofNotification.reset();
 }
 
 SourceAAC::~SourceAAC(){
@@ -227,18 +227,29 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 	processReadJob();
 	Profiler.end();
 
+	Profiler.start("AAC decode");
 	while(dataBuffer.readAvailable() < BUFFER_SIZE){
 		ADTSTiming::Header adts;
 		if(!prepareNextFrame(adts)) break;
 		const size_t rawBlocks = adts.sourceFrames / 1024;
-		const size_t requiredBytes =
-				(rawBlocks - 1) * AAC_MAX_MONO_BLOCK_BYTES + AAC_MAX_DECODED_BYTES;
-		if(dataBuffer.writeAvailable() < requiredBytes) break;
+		size_t requiredBytes = 0;
+		if(!ADTSTiming::requiredDecodeBytes(
+				rawBlocks, AAC_MAX_DECODED_BYTES,
+				AAC_OUT_BUFFER, requiredBytes) ||
+		   dataBuffer.writeAvailable() < requiredBytes){
+			Serial.println("SourceAAC: decoded frame exceeds output buffer");
+			break;
+		}
 
 		uint8_t* data = const_cast<uint8_t*>(fillBuffer.readData());
 		int bytesLeft = adts.frameLength;
 		size_t decodedBlocks = 0;
 		for(; decodedBlocks < rawBlocks; decodedBlocks++){
+			if(dataBuffer.writeAvailable() < AAC_MAX_DECODED_BYTES){
+				Serial.println("SourceAAC: insufficient decoder output space");
+				AACFlushCodec(hAACDecoder);
+				break;
+			}
 			int16_t* pcm = reinterpret_cast<int16_t*>(dataBuffer.writeData());
 			const int ret = AACDecode(hAACDecoder, &data, &bytesLeft, pcm);
 			if(ret){
@@ -299,7 +310,7 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 	}
 
 	if(samples == 0){
-		if(songDoneCallback != nullptr) {
+		if(readEof && eofNotification.take() && songDoneCallback != nullptr) {
 			songDoneCallback();
 		}
 		if(repeat && !rewindAttempted){
@@ -399,6 +410,7 @@ bool SourceAAC::seekSourceFrame(uint64_t frame){
 	decodedSourceFrame = indexedFrame;
 	seekTargetSourceFrame = frame;
 	elapsedFrameRemainder = 0;
+	eofNotification.reset();
 	resetDecoding();
 	return true;
 }

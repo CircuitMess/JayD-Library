@@ -54,7 +54,7 @@ ADTS indexing runs while a source is opened, before it is published to the
 audio thread. Each seek entry is 8 bytes. The bounded index uses at most 128 KiB
 per deck in PSRAM (16,384 frames), or 16 KiB without PSRAM (2,048 frames);
 the temporary scan cache is 4 KiB. The larger strict-frame decode buffers add
-23 KiB per source over the previous buffers. `getFrameIndexQuality()` reports
+35 KiB per source over the previous buffers. `getFrameIndexQuality()` reports
 whether the whole track is seekable; duration remains frame-counted even when
 the seek index reaches its cap. A `cm:esp32:jayd` build measured 1,026,334
 bytes of flash and 44,464 bytes of static RAM: +312 bytes of flash and no

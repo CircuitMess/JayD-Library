@@ -49,4 +49,20 @@ int main(){
 	assert(ADTSTiming::findPreceding(index, 3, 1023) == 0);
 	assert(ADTSTiming::findPreceding(index, 3, 1024) == 1);
 	assert(ADTSTiming::findPreceding(index, 3, UINT64_MAX) == 2);
+
+	size_t required = 0;
+	assert(ADTSTiming::requiredDecodeBytes(4, 8192, 32768, required));
+	assert(required == 32768);
+	assert(!ADTSTiming::requiredDecodeBytes(4, 8192, 32767, required));
+	assert(!ADTSTiming::requiredDecodeBytes(SIZE_MAX, 8192, SIZE_MAX, required));
+
+	ADTSTiming::EofNotification eof;
+	assert(eof.take());       // first non-repeat EOF generate
+	assert(!eof.take());      // repeated generate after the same EOF
+	eof.reset();              // repeat rewind
+	assert(eof.take());
+	eof.reset();              // seek after EOF
+	assert(eof.take());
+	eof.reset();              // reopen
+	assert(eof.take());
 }

@@ -89,6 +89,7 @@ private:
 	bool readEof = false;
 	bool discardPendingRead = false;
 	bool rewindAttempted = false;
+	ADTSTiming::EofNotification eofNotification;
 
 	bool repeat = false;
 	void (*songDoneCallback)() = nullptr;
