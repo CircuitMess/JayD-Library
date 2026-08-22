@@ -84,6 +84,8 @@ bool OutputWAV::begin(const fs::File& outputFile){
 	droppedBytes = 0;
 	error = RecordingError::NONE;
 	prepared = false;
+	fileValid = false;
+	finalizeQueueRetries = 0;
 	freeBuffers.clear();
 	for(uint8_t i = 0; i < OUTWAV_BUFCOUNT; i++){
 		outBuffers[i]->clear();
@@ -131,11 +133,17 @@ void OutputWAV::service(){
 
 	if(finalizeStage == FinalizeStage::DRAIN){
 		header = makeWavHeader(bytesWritten, NUM_CHANNELS, SAMPLE_RATE, BYTES_PER_SAMPLE);
-		if(!queueFinalizeJob(SDJob::SD_SEEK)){
-			fail(RecordingError::FINALIZE_FAILED);
-			finalizeStage = FinalizeStage::DONE;
-		}else{
-			finalizeStage = FinalizeStage::SEEK;
+		if(tryQueueFinalizeJob(SDJob::SD_SEEK, FinalizeStage::SEEK) ==
+		   FinalizeEnqueueResult::EXHAUSTED){
+			failFinalize();
+		}
+		return;
+	}
+
+	if(finalizeStage == FinalizeStage::HEADER_QUEUE){
+		if(tryQueueFinalizeJob(SDJob::SD_WRITE, FinalizeStage::HEADER) ==
+		   FinalizeEnqueueResult::EXHAUSTED){
+			failFinalize();
 		}
 		return;
 	}
@@ -146,26 +154,33 @@ void OutputWAV::service(){
 	delete finalizeResult;
 	finalizeResult = nullptr;
 	if(!success){
-		fail(RecordingError::FINALIZE_FAILED);
-		finalizeStage = FinalizeStage::DONE;
+		failFinalize();
 		return;
 	}
 
 	if(finalizeStage == FinalizeStage::SEEK){
-		if(!queueFinalizeJob(SDJob::SD_WRITE)){
-			fail(RecordingError::FINALIZE_FAILED);
-			finalizeStage = FinalizeStage::DONE;
-		}else{
-			finalizeStage = FinalizeStage::HEADER;
-		}
+		finalizeStage = FinalizeStage::HEADER_QUEUE;
 	}else{
 		finalizeStage = FinalizeStage::DONE;
 		prepared = false;
+		fileValid = true;
 	}
 }
 
 bool OutputWAV::isFinalized() const{
 	return finalizeStage == FinalizeStage::DONE;
+}
+
+bool OutputWAV::isPrepared() const{
+	return prepared;
+}
+
+bool OutputWAV::isFileValid() const{
+	return fileValid;
+}
+
+void OutputWAV::invalidateFile(){
+	fileValid = false;
 }
 
 RecordingError OutputWAV::getError() const{
@@ -183,6 +198,10 @@ uint32_t OutputWAV::getDroppedBytes() const{
 uint32_t OutputWAV::getDurationMs() const{
 	const uint32_t byteRate = SAMPLE_RATE * NUM_CHANNELS * BYTES_PER_SAMPLE;
 	return byteRate == 0 ? 0 : static_cast<uint64_t>(bytesWritten) * 1000 / byteRate;
+}
+
+uint8_t OutputWAV::getFinalizeQueueRetries() const{
+	return finalizeQueueRetries;
 }
 
 bool OutputWAV::addWriteJob(){
@@ -269,6 +288,26 @@ bool OutputWAV::queueFinalizeJob(SDJob::Type type){
 			.buffer = type == SDJob::SD_SEEK ? nullptr : reinterpret_cast<uint8_t*>(&header),
 			.result = &finalizeResult
 	});
+}
+
+FinalizeEnqueueResult OutputWAV::tryQueueFinalizeJob(
+		SDJob::Type type,
+		FinalizeStage queuedStage
+){
+	const FinalizeEnqueueResult result = recordFinalizeEnqueue(
+			queueFinalizeJob(type),
+			finalizeQueueRetries,
+			OUTWAV_FINALIZE_QUEUE_FAILURES
+	);
+	if(result == FinalizeEnqueueResult::QUEUED) finalizeStage = queuedStage;
+	return result;
+}
+
+void OutputWAV::failFinalize(){
+	error = RecordingError::FINALIZE_FAILED;
+	fileValid = false;
+	prepared = false;
+	finalizeStage = FinalizeStage::DONE;
 }
 
 void OutputWAV::fail(RecordingError recordingError){

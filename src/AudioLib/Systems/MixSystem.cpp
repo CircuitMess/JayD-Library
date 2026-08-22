@@ -631,13 +631,26 @@ bool MixSystem::isRecording(){
 }
 
 RecordingStatus MixSystem::getRecordingStatus() const{
+	if(!recordingApplied){
+		return {
+				recordingState,
+				recordingError,
+				0,
+				0,
+				0,
+				0,
+				false
+		};
+	}
 	const RecordingError outputError = fsOut->getError();
 	return {
 			recordingState,
 			recordingError == RecordingError::NONE ? outputError : recordingError,
 			fsOut->getBytesWritten(),
 			fsOut->getDurationMs(),
-			fsOut->getDroppedBytes()
+			fsOut->getDroppedBytes(),
+			fsOut->getFinalizeQueueRetries(),
+			fsOut->isFileValid()
 	};
 }
 
@@ -648,44 +661,17 @@ bool MixSystem::startRecording(){
 
 	recordingState = RecordingState::STARTING;
 	recordingError = RecordingError::NONE;
-	if(SD.cardType() == CARD_NONE){
-		recordingError = RecordingError::SD_UNAVAILABLE;
-		recordingState = RecordingState::FAILED;
-		return false;
-	}
-
-	if(SD.exists(recordPath) && !SD.remove(recordPath)){
-		recordingError = RecordingError::SD_UNAVAILABLE;
-		recordingState = RecordingState::FAILED;
-		return false;
-	}
-
-	fileOut = SD.open(recordPath, "w");
-	if(!fileOut){
-		Serial.printf("Failed opening %s for writing\n", recordPath);
-		recordingError = RecordingError::OPEN_FAILED;
-		recordingState = RecordingState::FAILED;
-		return false;
-	}
-
-	if(!fsOut->begin(fileOut)){
-		recordingError = fsOut->getError();
-		recordingState = RecordingState::FAILED;
-		fileOut.close();
-		return false;
-	}
+	recordingApplied = false;
 
 	if(!out->isRunning()){
 		_startRecording();
-		return true;
+		return recordingState != RecordingState::FAILED;
 	}
 
 	if(enqueueRequest({ MixRequest::RECORD, 0, 0, 1 })) return true;
 
 	recordingError = RecordingError::QUEUE_FULL;
-	recordingState = RecordingState::STOPPING;
-	fsOut->finish();
-	finishRecordingSync();
+	recordingState = RecordingState::FAILED;
 	return false;
 }
 
@@ -711,11 +697,46 @@ bool MixSystem::stopRecording(){
 void MixSystem::_startRecording(){
 	if(out->getOutput(1) != nullptr) return;
 	const bool stopping = recordingState == RecordingState::STOPPING;
+	if(!stopping && recordingState != RecordingState::STARTING) return;
+	fsOut->invalidateFile();
+
+	if(SD.cardType() == CARD_NONE){
+		recordingError = RecordingError::SD_UNAVAILABLE;
+		recordingState = RecordingState::FAILED;
+		return;
+	}
+
+	if(SD.exists(recordPath) && !SD.remove(recordPath)){
+		recordingError = RecordingError::SD_UNAVAILABLE;
+		recordingState = RecordingState::FAILED;
+		return;
+	}
+
+	fileOut = SD.open(recordPath, "w");
+	if(!fileOut){
+		Serial.printf("Failed opening %s for writing\n", recordPath);
+		recordingError = RecordingError::OPEN_FAILED;
+		recordingState = RecordingState::FAILED;
+		return;
+	}
+
+	if(!fsOut->begin(fileOut)){
+		recordingError = fsOut->getError();
+		recordingState = RecordingState::FAILED;
+		fileOut.close();
+		return;
+	}
+	recordingApplied = true;
+
 	out->addOutput(fsOut);
 	if(out->isRunning()){
 		fsOut->start();
 	}
-	if(!stopping) recordingState = RecordingState::RECORDING;
+	if(stopping){
+		_stopRecording();
+	}else{
+		recordingState = RecordingState::RECORDING;
+	}
 }
 
 void MixSystem::_stopRecording(){
@@ -726,6 +747,12 @@ void MixSystem::_stopRecording(){
 		fsOut->stop();
 	}else{
 		fsOut->finish();
+	}
+	if(!recordingApplied &&
+	   (recordingState == RecordingState::STARTING ||
+	    recordingState == RecordingState::STOPPING)){
+		recordingState = RecordingState::IDLE;
+		return;
 	}
 	if(recordingState == RecordingState::STARTING ||
 	   recordingState == RecordingState::RECORDING) recordingState = RecordingState::STOPPING;
@@ -739,12 +766,20 @@ void MixSystem::serviceRecording(){
 		_stopRecording();
 	}
 
-	if(recordingState != RecordingState::STOPPING || !fsOut->isFinalized()) return;
+	if(recordingState != RecordingState::STOPPING ||
+	   !recordingApplied ||
+	   !fsOut->isFinalized()) return;
 	fileOut.close();
-	if(fsOut->getError() == RecordingError::NONE && recordingError == RecordingError::NONE){
+	if(fsOut->getError() == RecordingError::NONE &&
+	   recordingError == RecordingError::NONE &&
+	   fsOut->isFileValid()){
 		recordingState = RecordingState::COMPLETE;
 	}else{
-		if(recordingError == RecordingError::NONE) recordingError = fsOut->getError();
+		if(recordingError == RecordingError::NONE){
+			recordingError = fsOut->getError() == RecordingError::NONE
+					? RecordingError::FINALIZE_FAILED
+					: fsOut->getError();
+		}
 		recordingState = RecordingState::FAILED;
 	}
 }

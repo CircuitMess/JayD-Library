@@ -39,6 +39,8 @@ struct RecordingStatus {
 	uint32_t bytes;
 	uint32_t durationMs;
 	uint32_t droppedBytes;
+	uint8_t finalizeQueueRetries;
+	bool fileValid;
 };
 
 class MixSystem {
@@ -123,6 +125,7 @@ private:
 	OutputSplitter* out;
 	volatile RecordingState recordingState = RecordingState::IDLE;
 	volatile RecordingError recordingError = RecordingError::NONE;
+	volatile bool recordingApplied = false;
 
 	SpeedModifier* speed[2] = { nullptr };
 
