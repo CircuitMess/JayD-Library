@@ -133,7 +133,7 @@ bool MixSystem::openChannel(uint8_t channel, const fs::File& file){
 	}
 	newSource->setRepeat(true);
 	while(!newSource->isReadReady()) Sched.loop(0);
-	requests[requestIndex].value = reinterpret_cast<size_t>(newSource);
+	requests[requestIndex].value = reinterpret_cast<uintptr_t>(newSource);
 
 	if(sendRequest(requestIndex)) return true;
 
@@ -200,7 +200,7 @@ void MixSystem::clearRequests(){
 	while(queue.count()){
 		if(!queue.receive(&index)) break;
 		if(index < requestCapacity && requestUsed[index] && requests[index].type == MixRequest::OPEN){
-			delete reinterpret_cast<SourceAAC*>(requests[index].value);
+			delete reinterpret_cast<SourceAAC*>(uintptr_t(requests[index].value));
 		}
 		releaseRequest(index);
 	}
@@ -249,10 +249,10 @@ void MixSystem::audioThread(Task* task){
 					system->_setEffectIntensity(request.channel, request.slot, request.value);
 					break;
 				case MixRequest::SET_INFO:
-					system->_setInfoGenerator(request.channel, reinterpret_cast<InfoGenerator*>(request.value));
+					system->_setInfoGenerator(request.channel, reinterpret_cast<InfoGenerator*>(uintptr_t(request.value)));
 					break;
 				case MixRequest::SET_SEEK:
-					system->_seekChannel(request.channel, static_cast<uint16_t>(request.value));
+					system->_seekChannel(request.channel, request.value);
 					break;
 				case MixRequest::RECORD:
 					if(request.value == system->isRecording()) break;
@@ -263,7 +263,7 @@ void MixSystem::audioThread(Task* task){
 					}
 					break;
 				case MixRequest::OPEN:
-					system->_openChannel(request.channel, reinterpret_cast<SourceAAC*>(request.value));
+					system->_openChannel(request.channel, reinterpret_cast<SourceAAC*>(uintptr_t(request.value)));
 					break;
 			}
 			system->releaseRequest(requestIndex);
@@ -321,13 +321,55 @@ uint16_t MixSystem::getDuration(uint8_t c){
 uint16_t MixSystem::getElapsed(uint8_t c){
 	if(c >= 2) return 0;
 	cleanupRetiredSources();
-	if(seekPending[c] > 0){
-		return seek[c];
-	}
 	sourceMutex.lock();
-	uint16_t elapsed = source[c] ? source[c]->getElapsed() : 0;
+	uint16_t elapsed = 0;
+	if(source[c]){
+		const uint64_t frames = seekPending[c] > 0 ? seekFrame[c] : source[c]->getElapsedSourceFrames();
+		const uint32_t rate = source[c]->getSourceSampleRate();
+		const uint64_t seconds = rate == 0 ? 0 : frames / rate;
+		elapsed = seconds > UINT16_MAX ? UINT16_MAX : uint16_t(seconds);
+	}
 	sourceMutex.unlock();
 	return elapsed;
+}
+
+uint64_t MixSystem::getDurationSourceFrames(uint8_t c){
+	if(c >= 2) return 0;
+	cleanupRetiredSources();
+	sourceMutex.lock();
+	const uint64_t frames = source[c] ? source[c]->getDurationSourceFrames() : 0;
+	sourceMutex.unlock();
+	return frames;
+}
+
+uint64_t MixSystem::getElapsedSourceFrames(uint8_t c){
+	if(c >= 2) return 0;
+	cleanupRetiredSources();
+	sourceMutex.lock();
+	const uint64_t frames = source[c]
+							? (seekPending[c] > 0 ? seekFrame[c] : source[c]->getElapsedSourceFrames())
+							: 0;
+	sourceMutex.unlock();
+	return frames;
+}
+
+uint32_t MixSystem::getSourceSampleRate(uint8_t c){
+	if(c >= 2) return 0;
+	cleanupRetiredSources();
+	sourceMutex.lock();
+	const uint32_t rate = source[c] ? source[c]->getSourceSampleRate() : 0;
+	sourceMutex.unlock();
+	return rate;
+}
+
+SourceAAC::FrameIndexQuality MixSystem::getFrameIndexQuality(uint8_t c){
+	if(c >= 2) return SourceAAC::INDEX_UNAVAILABLE;
+	cleanupRetiredSources();
+	sourceMutex.lock();
+	const SourceAAC::FrameIndexQuality quality =
+			source[c] ? source[c]->getFrameIndexQuality() : SourceAAC::INDEX_UNAVAILABLE;
+	sourceMutex.unlock();
+	return quality;
 }
 
 bool MixSystem::hasChannel(uint8_t c){
@@ -464,7 +506,7 @@ void MixSystem::setChannelInfo(uint8_t channel, InfoGenerator* channelInfoGen){
 		return;
 	}
 
-	enqueueRequest({ MixRequest::SET_INFO, channel, 0, reinterpret_cast<size_t>(channelInfoGen) });
+	enqueueRequest({ MixRequest::SET_INFO, channel, 0, reinterpret_cast<uintptr_t>(channelInfoGen) });
 }
 
 void MixSystem::pauseChannel(uint8_t channel){
@@ -480,23 +522,48 @@ void MixSystem::resumeChannel(uint8_t channel){
 
 void MixSystem::seekChannel(uint8_t channel, uint16_t time){
 	if(channel >= 2) return;
-
-	if(!out->isRunning()){
-		_seekChannel(channel, time);
-		return;
-	}
-
-	seek[channel] = time;
-	seekPending[channel]++;
-	if(!enqueueRequest({ MixRequest::SET_SEEK, channel, 0, time })) seekPending[channel]--;
+	const uint32_t rate = getSourceSampleRate(channel);
+	uint64_t frame;
+	if(!ADTSTiming::secondsToFrames(time, rate, frame)) return;
+	seekChannelSourceFrame(channel, frame);
 }
 
-void MixSystem::_seekChannel(uint8_t channel, uint16_t time){
-	if(channel > 1) return;
-	if(seekPending[channel] > 0) seekPending[channel]--;
-	if(!source[channel]) return;
+bool MixSystem::seekChannelSourceFrame(uint8_t channel, uint64_t frame){
+	if(channel >= 2) return false;
+	if(!out->isRunning()){
+		sourceMutex.lock();
+		const bool success = source[channel] && source[channel]->seekSourceFrame(frame);
+		if(success && speed[channel]) speed[channel]->reset();
+		sourceMutex.unlock();
+		return success;
+	}
 
-	source[channel]->seek(time, SeekSet);
+	sourceMutex.lock();
+	if(!source[channel]){
+		sourceMutex.unlock();
+		return false;
+	}
+	seekFrame[channel] = frame;
+	seekPending[channel]++;
+	sourceMutex.unlock();
+	if(!enqueueRequest({ MixRequest::SET_SEEK, channel, 0, frame })){
+		sourceMutex.lock();
+		seekPending[channel]--;
+		sourceMutex.unlock();
+		return false;
+	}
+	return true;
+}
+
+void MixSystem::_seekChannel(uint8_t channel, uint64_t frame){
+	if(channel > 1) return;
+	sourceMutex.lock();
+	if(seekPending[channel] > 0) seekPending[channel]--;
+	SourceAAC* channelSource = source[channel];
+	sourceMutex.unlock();
+	if(channelSource && channelSource->seekSourceFrame(frame) && speed[channel]){
+		speed[channel]->reset();
+	}
 }
 
 bool MixSystem::isRecording(){

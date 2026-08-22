@@ -21,7 +21,7 @@ struct MixRequest {
 	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_EFFECT, SET_EFFECT_INTENSITY, SET_INFO, SET_SEEK, RECORD, OPEN } type;
 	uint8_t channel;
 	uint8_t slot;
-	size_t value;
+	uint64_t value;
 };
 
 class MixSystem {
@@ -44,6 +44,10 @@ public:
 
 	uint16_t getDuration(uint8_t channel);
 	uint16_t getElapsed(uint8_t channel);
+	uint64_t getDurationSourceFrames(uint8_t channel);
+	uint64_t getElapsedSourceFrames(uint8_t channel);
+	uint32_t getSourceSampleRate(uint8_t channel);
+	SourceAAC::FrameIndexQuality getFrameIndexQuality(uint8_t channel);
 	bool hasChannel(uint8_t channel);
 	uint8_t getVolume(uint8_t channel);
 	uint8_t getMix();
@@ -65,6 +69,7 @@ public:
 	bool isChannelPaused(uint8_t channel);
 
 	void seekChannel(uint8_t channel, uint16_t time);
+	bool seekChannelSourceFrame(uint8_t channel, uint64_t frame);
 
 	void startRecording();
 	void stopRecording();
@@ -102,7 +107,7 @@ private:
 	void _setEffect(uint8_t channel, uint8_t slot, EffectType type);
 	void _setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intensity);
 	void _setInfoGenerator(uint8_t channel, InfoGenerator* generator);
-	void _seekChannel(uint8_t channel, uint16_t time);
+	void _seekChannel(uint8_t channel, uint64_t frame);
 	void _startRecording();
 	void _stopRecording();
 	void _openChannel(uint8_t channel, SourceAAC* source);
@@ -116,7 +121,7 @@ private:
 
 	static Effect* (* getEffect[EffectType::COUNT])();
 
-	uint16_t seek[2];
+	uint64_t seekFrame[2] = {};
 	int seekPending[2] = { 0 };
 };
 
