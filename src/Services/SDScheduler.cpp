@@ -3,26 +3,29 @@
 
 SDScheduler Sched;
 
-SDScheduler::SDScheduler() :jobs(8, sizeof(SDJob*)){
+SDScheduler::SDScheduler() : jobs(xQueueCreate(jobCapacity, sizeof(SDJob*))){
+}
 
+SDScheduler::~SDScheduler(){
+	vQueueDelete(jobs);
 }
 
 bool SDScheduler::addJob(SDJob *job){
 	if(job == nullptr) return false;
-	if(jobs.send(&job)) return true;
+	if(xQueueSend(jobs, &job, 0) == pdTRUE) return true;
 	delete job;
 	return false;
 }
 
 void SDScheduler::loop(uint micros) {
-	if (jobs.count() == 0) {
+	if (uxQueueMessagesWaiting(jobs) == 0) {
 		return;
 	}
 
 	SDJob* request = nullptr;
 
-	while(jobs.count() > 0){
-		if(!jobs.receive(&request)){
+	while(uxQueueMessagesWaiting(jobs) > 0){
+		if(xQueueReceive(jobs, &request, 0) != pdTRUE){
 			Serial.println("Receive error");
 			return;
 		}

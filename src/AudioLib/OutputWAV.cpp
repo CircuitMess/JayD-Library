@@ -66,7 +66,7 @@ void OutputWAV::output(size_t numSamples){
 
 void OutputWAV::init(){
 	if(!prepared && file) begin(file);
-	if(!prepared || !file || finalizeStage != FinalizeStage::ACTIVE){
+	if(!prepared || !file){
 		Serial.println("Output file not open");
 		fail(RecordingError::OPEN_FAILED);
 	}
@@ -100,9 +100,8 @@ bool OutputWAV::begin(const fs::File& outputFile){
 	}
 
 	header = makeWavHeader(0, NUM_CHANNELS, SAMPLE_RATE, BYTES_PER_SAMPLE);
-	if(!writeInitialHeader()) return false;
 	prepared = true;
-	finalizeStage = FinalizeStage::ACTIVE;
+	finalizeStage = FinalizeStage::INIT_SEEK_QUEUE;
 	return true;
 }
 
@@ -127,9 +126,46 @@ void OutputWAV::finish(){
 
 void OutputWAV::service(){
 	processWriteJob();
-	if(finalizeStage == FinalizeStage::DONE ||
-	   finalizeStage == FinalizeStage::ACTIVE ||
-	   (finalizeStage == FinalizeStage::DRAIN && hasPendingWrites())) return;
+	if(finalizeStage == FinalizeStage::DONE || finalizeStage == FinalizeStage::ACTIVE) return;
+
+	if(finalizeStage == FinalizeStage::INIT_SEEK_QUEUE){
+		const FinalizeEnqueueResult result =
+				tryQueueFinalizeJob(SDJob::SD_SEEK, FinalizeStage::INIT_SEEK);
+		if(result == FinalizeEnqueueResult::EXHAUSTED){
+			failInitialize(RecordingError::QUEUE_FULL);
+		}
+		return;
+	}
+
+	if(finalizeStage == FinalizeStage::INIT_HEADER_QUEUE){
+		const FinalizeEnqueueResult result =
+				tryQueueFinalizeJob(SDJob::SD_WRITE, FinalizeStage::INIT_HEADER);
+		if(result == FinalizeEnqueueResult::EXHAUSTED){
+			failInitialize(RecordingError::QUEUE_FULL);
+		}
+		return;
+	}
+
+	if(finalizeStage == FinalizeStage::INIT_SEEK ||
+	   finalizeStage == FinalizeStage::INIT_HEADER){
+		if(finalizeResult == nullptr) return;
+		const bool success = finalizeResult->error == 0 &&
+				(finalizeStage == FinalizeStage::INIT_SEEK ||
+				 finalizeResult->size == sizeof(WavHeader));
+		delete finalizeResult;
+		finalizeResult = nullptr;
+		if(!success){
+			failInitialize(RecordingError::WRITE_FAILED);
+		}else if(finalizeStage == FinalizeStage::INIT_SEEK){
+			finalizeStage = FinalizeStage::INIT_HEADER_QUEUE;
+		}else{
+			finalizeQueueRetries = 0;
+			finalizeStage = FinalizeStage::ACTIVE;
+		}
+		return;
+	}
+
+	if(finalizeStage == FinalizeStage::DRAIN && hasPendingWrites()) return;
 
 	if(finalizeStage == FinalizeStage::DRAIN){
 		header = makeWavHeader(bytesWritten, NUM_CHANNELS, SAMPLE_RATE, BYTES_PER_SAMPLE);
@@ -173,6 +209,10 @@ bool OutputWAV::isFinalized() const{
 
 bool OutputWAV::isPrepared() const{
 	return prepared;
+}
+
+bool OutputWAV::isReady() const{
+	return finalizeStage == FinalizeStage::ACTIVE;
 }
 
 bool OutputWAV::isFileValid() const{
@@ -254,32 +294,6 @@ bool OutputWAV::hasPendingWrites() const{
 	return false;
 }
 
-bool OutputWAV::writeInitialHeader(){
-	if(!queueFinalizeJob(SDJob::SD_SEEK)){
-		fail(RecordingError::QUEUE_FULL);
-		return false;
-	}
-	while(finalizeResult == nullptr) Sched.loop(0);
-	const bool seekSuccess = finalizeResult->error == 0;
-	delete finalizeResult;
-	finalizeResult = nullptr;
-	if(!seekSuccess){
-		fail(RecordingError::WRITE_FAILED);
-		return false;
-	}
-
-	if(!queueFinalizeJob(SDJob::SD_WRITE)){
-		fail(RecordingError::QUEUE_FULL);
-		return false;
-	}
-	while(finalizeResult == nullptr) Sched.loop(0);
-	const bool writeSuccess = finalizeResult->error == 0 && finalizeResult->size == sizeof(WavHeader);
-	delete finalizeResult;
-	finalizeResult = nullptr;
-	if(!writeSuccess) fail(RecordingError::WRITE_FAILED);
-	return writeSuccess;
-}
-
 bool OutputWAV::queueFinalizeJob(SDJob::Type type){
 	return Sched.addJob(new SDJob {
 			.type = type,
@@ -301,6 +315,13 @@ FinalizeEnqueueResult OutputWAV::tryQueueFinalizeJob(
 	);
 	if(result == FinalizeEnqueueResult::QUEUED) finalizeStage = queuedStage;
 	return result;
+}
+
+void OutputWAV::failInitialize(RecordingError recordingError){
+	error = recordingError;
+	fileValid = false;
+	prepared = false;
+	finalizeStage = FinalizeStage::DONE;
 }
 
 void OutputWAV::failFinalize(){

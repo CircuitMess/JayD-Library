@@ -2,9 +2,8 @@
 #define JAYD_LIBRARY_SDSCHEDULER_H
 
 #include <FS.h>
-#include <vector>
 #include <Loop/LoopListener.h>
-#include <Sync/Queue.h>
+#include <freertos/queue.h>
 
 struct SDResult {
 	uint8_t error;
@@ -23,11 +22,13 @@ struct SDJob {
 class SDScheduler : public LoopListener {
 public:
 	SDScheduler();
+	~SDScheduler();
 
 	bool addJob(SDJob *job);
 	void loop(uint micros) override;
 private:
-	Queue jobs;
+	static constexpr uint8_t jobCapacity = 8;
+	QueueHandle_t jobs;
 
 	void doJob(SDJob* job);
 

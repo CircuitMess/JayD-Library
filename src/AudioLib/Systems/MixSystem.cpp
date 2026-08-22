@@ -529,9 +529,13 @@ RecordingStatus MixSystem::getRecordingStatus() const{
 }
 
 bool MixSystem::startRecording(){
+	recordingMutex.lock();
 	if(recordingState == RecordingState::STARTING ||
 	   recordingState == RecordingState::RECORDING ||
-	   recordingState == RecordingState::STOPPING) return false;
+	   recordingState == RecordingState::STOPPING){
+		recordingMutex.unlock();
+		return false;
+	}
 
 	recordingState = RecordingState::STARTING;
 	recordingError = RecordingError::NONE;
@@ -539,39 +543,57 @@ bool MixSystem::startRecording(){
 
 	if(!out->isRunning()){
 		_startRecording();
-		return recordingState != RecordingState::FAILED;
+		const bool accepted = recordingState != RecordingState::FAILED;
+		recordingMutex.unlock();
+		return accepted;
 	}
 
-	if(enqueueRequest({ MixRequest::RECORD, 0, 0, 1 })) return true;
+	if(enqueueRequest({ MixRequest::RECORD, 0, 0, 1 })){
+		recordingMutex.unlock();
+		return true;
+	}
 
 	recordingError = RecordingError::QUEUE_FULL;
 	recordingState = RecordingState::FAILED;
+	recordingMutex.unlock();
 	return false;
 }
 
 bool MixSystem::stopRecording(){
+	recordingMutex.lock();
 	if(recordingState == RecordingState::IDLE ||
 	   recordingState == RecordingState::COMPLETE ||
 	   recordingState == RecordingState::FAILED ||
-	   recordingState == RecordingState::STOPPING) return true;
-
-	const RecordingState previousState = recordingState;
-	recordingState = RecordingState::STOPPING;
-	if(!out->isRunning()){
-		_stopRecording();
-		finishRecordingSync();
-		return recordingState == RecordingState::COMPLETE;
+	   recordingState == RecordingState::STOPPING){
+		recordingMutex.unlock();
+		return true;
 	}
 
-	if(enqueueRequest({ MixRequest::RECORD, 0, 0, 0 })) return true;
-	recordingState = previousState;
+	if(!out->isRunning()){
+		recordingState = RecordingState::STOPPING;
+		_stopRecording();
+		finishRecordingSync();
+		const bool complete = recordingState == RecordingState::COMPLETE;
+		recordingMutex.unlock();
+		return complete;
+	}
+
+	if(enqueueRequest({ MixRequest::RECORD, 0, 0, 0 })){
+		if(recordingState == RecordingState::STARTING ||
+		   recordingState == RecordingState::RECORDING){
+			recordingState = RecordingState::STOPPING;
+		}
+		recordingMutex.unlock();
+		return true;
+	}
+	recordingMutex.unlock();
 	return false;
 }
 
 void MixSystem::_startRecording(){
 	if(out->getOutput(1) != nullptr) return;
-	const bool stopping = recordingState == RecordingState::STOPPING;
-	if(!stopping && recordingState != RecordingState::STARTING) return;
+	if(recordingState != RecordingState::STARTING &&
+	   recordingState != RecordingState::STOPPING) return;
 	fsOut->invalidateFile();
 
 	if(SD.cardType() == CARD_NONE){
@@ -601,16 +623,6 @@ void MixSystem::_startRecording(){
 		return;
 	}
 	recordingApplied = true;
-
-	out->addOutput(fsOut);
-	if(out->isRunning()){
-		fsOut->start();
-	}
-	if(stopping){
-		_stopRecording();
-	}else{
-		recordingState = RecordingState::RECORDING;
-	}
 }
 
 void MixSystem::_stopRecording(){
@@ -634,6 +646,31 @@ void MixSystem::_stopRecording(){
 
 void MixSystem::serviceRecording(){
 	fsOut->service();
+	if(recordingState == RecordingState::STARTING && recordingApplied){
+		if(fsOut->getError() != RecordingError::NONE){
+			recordingError = fsOut->getError();
+			recordingState = RecordingState::FAILED;
+			fileOut.close();
+			return;
+		}
+		if(fsOut->isReady()){
+			recordingMutex.lock();
+			if(recordingState == RecordingState::STARTING){
+				out->addOutput(fsOut);
+				if(out->isRunning()) fsOut->start();
+				recordingState = RecordingState::RECORDING;
+			}
+			recordingMutex.unlock();
+		}
+	}
+
+	if(recordingState == RecordingState::STOPPING &&
+	   recordingApplied &&
+	   fsOut->isReady() &&
+	   !fsOut->isRunning()){
+		fsOut->finish();
+	}
+
 	if(recordingState == RecordingState::RECORDING &&
 	   fsOut->getError() != RecordingError::NONE){
 		recordingState = RecordingState::STOPPING;
