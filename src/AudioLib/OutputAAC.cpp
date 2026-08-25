@@ -181,13 +181,13 @@ void OutputAAC::addWriteJob(){
 	if(freeBuffers.empty()) return;
 	uint8_t i = freeBuffers.front();
 
-	if(!Sched.addJob(new SDJob{
+	Sched.addJob(new SDJob{
 			 .type = SDJob::SD_WRITE,
 			 .file = file,
 			 .size = outBuffers[i]->readAvailable(),
 			 .buffer = const_cast<uint8_t*>(outBuffers[i]->readData()),
 			 .result = &writeResult[i]
-	 })) return; // Queue full: leave the buffer in freeBuffers so it can be retried.
+	 });
 
 	freeBuffers.erase(freeBuffers.begin());
 	writePending[i] = true;

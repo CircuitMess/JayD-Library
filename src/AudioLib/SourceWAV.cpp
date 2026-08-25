@@ -72,17 +72,13 @@ void SourceWAV::addReadJob(bool full){
 		buf = static_cast<uint8_t*>(ps_malloc(size));
 	}
 
-	if(!Sched.addJob(new SDJob{
+	Sched.addJob(new SDJob{
 			 .type = SDJob::SD_READ,
 			 .file = file,
 			 .size = size,
 			 .buffer = buf,
 			 .result = &readResult
-	 })){
-		// Queue full: leave the read retryable rather than claiming data is in flight.
-		free(buf);
-		return;
-	}
+	 });
 
 	readJobPending = true;
 }
