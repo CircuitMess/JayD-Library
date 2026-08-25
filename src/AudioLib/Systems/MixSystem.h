@@ -13,14 +13,34 @@
 #include "../EffectType.hpp"
 #include "../SourceAAC.h"
 #include <Sync/Queue.h>
+#include <Sync/Mutex.h>
 #include "../InfoGenerator.h"
 #include "../OutputWAV.h"
 
 struct MixRequest {
-	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_EFFECT, SET_EFFECT_INTENSITY, SET_INFO, SET_SEEK, RECORD } type;
+	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_EFFECT, SET_EFFECT_INTENSITY, SET_INFO, SET_SEEK, RECORD, OPEN } type;
 	uint8_t channel;
 	uint8_t slot;
 	size_t value;
+};
+
+enum class RecordingState : uint8_t {
+	IDLE,
+	STARTING,
+	RECORDING,
+	STOPPING,
+	COMPLETE,
+	FAILED
+};
+
+struct RecordingStatus {
+	RecordingState state;
+	RecordingError error;
+	uint32_t bytes;
+	uint32_t durationMs;
+	uint32_t droppedBytes;
+	uint8_t finalizeQueueRetries;
+	bool fileValid;
 };
 
 class MixSystem {
@@ -32,6 +52,7 @@ public:
 	constexpr static const char* const recordPath = "/.Jay-D_Recording.wav";
 
 	bool open(uint8_t channel, const fs::File& file);
+	bool openChannel(uint8_t channel, const fs::File& file);
 
 	Task audioTask;
 	static void audioThread(Task* task);
@@ -42,6 +63,9 @@ public:
 
 	uint16_t getDuration(uint8_t channel);
 	uint16_t getElapsed(uint8_t channel);
+	bool hasChannel(uint8_t channel);
+	uint8_t getVolume(uint8_t channel);
+	uint8_t getMix();
 
 	void setVolume(uint8_t channel, uint8_t volume);
 	void setMix(uint8_t ratio);
@@ -61,27 +85,40 @@ public:
 
 	void seekChannel(uint8_t channel, uint16_t time);
 
-	void startRecording();
-	void stopRecording();
+	// Return values report whether the request was accepted. Poll status for
+	// asynchronous write/finalization failures.
+	bool startRecording();
+	bool stopRecording();
 	bool isRecording();
+	RecordingStatus getRecordingStatus() const;
 
 	void setChannelDoneCallback(uint8_t channel, void(*callback)());
 
 private:
+	static constexpr uint8_t requestCapacity = 6;
 	bool running = false;
 
 	Queue queue;
+	Mutex queueMutex;
+	Mutex sourceMutex;
+	Mutex recordingMutex;
+	MixRequest requests[requestCapacity] = {};
+	bool requestUsed[requestCapacity] = {};
 
-	fs::File file[2];
 	fs::File fileOut;
 
 	SourceAAC* source[2] = { nullptr };
+	SourceAAC* retiredSource[2] = { nullptr };
+	uint8_t volume[2] = { 255, 255 };
 
 	EffectProcessor* effector[2];
 	Mixer* mixer;
 	OutputI2S* i2s;
 	OutputWAV* fsOut;
 	OutputSplitter* out;
+	volatile RecordingState recordingState = RecordingState::IDLE;
+	volatile RecordingError recordingError = RecordingError::NONE;
+	volatile bool recordingApplied = false;
 
 	SpeedModifier* speed[2] = { nullptr };
 
@@ -94,12 +131,21 @@ private:
 	void _seekChannel(uint8_t channel, uint16_t time);
 	void _startRecording();
 	void _stopRecording();
+	void serviceRecording();
+	void finishRecordingSync();
+	void _openChannel(uint8_t channel, SourceAAC* source);
+	bool replaceSource(uint8_t channel, SourceAAC* source);
+	int8_t reserveRequest(const MixRequest& request);
+	bool sendRequest(uint8_t index);
+	bool enqueueRequest(const MixRequest& request);
+	void releaseRequest(uint8_t index);
+	void clearRequests();
+	void cleanupRetiredSources();
 
 	static Effect* (* getEffect[EffectType::COUNT])();
 
 	uint16_t seek[2];
 	int seekPending[2] = { 0 };
-
 };
 
 #endif //JAYD_LIBRARY_MIXSYSTEM_H

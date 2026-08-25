@@ -47,10 +47,14 @@ void SourceAAC::setSongDoneCallback(void (*callback)()) {
 	songDoneCallback = callback;
 }
 
+bool SourceAAC::isReadReady() const {
+	return !readJobPending || readResult != nullptr;
+}
+
 void SourceAAC::close(){
 	if(readJobPending){
 		while(readResult == nullptr){
-			delayMicroseconds(1);
+			Sched.loop(0);
 		}
 
 		free(readResult->buffer);
@@ -306,4 +310,3 @@ void SourceAAC::resetDecoding() {
 void SourceAAC::setRepeat(bool repeat) {
 	SourceAAC::repeat = repeat;
 }
-
