@@ -115,7 +115,14 @@ int main(){
 			(std::istreambuf_iterator<char>(schedulerFile)),
 			std::istreambuf_iterator<char>()
 	);
-	assert(scheduler.find("xQueueSend(jobs, &job, 0)") != std::string::npos);
-	assert(scheduler.find("portMAX_DELAY") == std::string::npos);
+	const size_t tryAddBegin = scheduler.find("bool SDScheduler::tryAddJob(");
+	const size_t tryAddEnd = scheduler.find("void SDScheduler::loop(", tryAddBegin);
+	assert(tryAddBegin != std::string::npos);
+	assert(tryAddEnd != std::string::npos);
+	const std::string tryAdd = scheduler.substr(tryAddBegin, tryAddEnd - tryAddBegin);
+	assert(tryAdd.find("xQueueSend(jobs, &job, 0)") != std::string::npos);
+	assert(tryAdd.find("portMAX_DELAY") == std::string::npos);
+	assert(wavSource.find("Sched.tryAddJob(") != std::string::npos);
+	assert(wavSource.find("Sched.addJob(") == std::string::npos);
 	return 0;
 }
