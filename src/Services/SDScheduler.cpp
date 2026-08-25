@@ -10,7 +10,13 @@ SDScheduler::~SDScheduler(){
 	vQueueDelete(jobs);
 }
 
-bool SDScheduler::addJob(SDJob *job){
+void SDScheduler::addJob(SDJob *job){
+	if(job == nullptr) return;
+	if(xQueueSend(jobs, &job, portMAX_DELAY) == pdTRUE) return;
+	delete job;
+}
+
+bool SDScheduler::tryAddJob(SDJob *job){
 	if(job == nullptr) return false;
 	if(xQueueSend(jobs, &job, 0) == pdTRUE) return true;
 	delete job;

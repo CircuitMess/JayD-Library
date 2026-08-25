@@ -24,7 +24,8 @@ public:
 	SDScheduler();
 	~SDScheduler();
 
-	bool addJob(SDJob *job);
+	void addJob(SDJob *job);
+	bool tryAddJob(SDJob *job);
 	void loop(uint micros) override;
 private:
 	static constexpr uint8_t jobCapacity = 8;

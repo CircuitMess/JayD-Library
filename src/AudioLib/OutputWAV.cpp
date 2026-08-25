@@ -250,7 +250,7 @@ bool OutputWAV::addWriteJob(){
 	const size_t size = outBuffers[i]->readAvailable();
 	if(size == 0) return true;
 
-	if(!Sched.addJob(new SDJob{
+	if(!Sched.tryAddJob(new SDJob{
 			 .type = SDJob::SD_WRITE,
 			 .file = file,
 			 .size = size,
@@ -295,7 +295,7 @@ bool OutputWAV::hasPendingWrites() const{
 }
 
 bool OutputWAV::queueFinalizeJob(SDJob::Type type){
-	return Sched.addJob(new SDJob {
+	return Sched.tryAddJob(new SDJob {
 			.type = type,
 			.file = file,
 			.size = type == SDJob::SD_SEEK ? 0 : sizeof(WavHeader),
