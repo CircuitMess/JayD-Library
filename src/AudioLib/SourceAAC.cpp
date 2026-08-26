@@ -1,5 +1,6 @@
 #include "SourceAAC.h"
 #include "../PerfMon.h"
+#include <SD.h>
 #include <limits.h>
 
 #define AAC_READ_BUFFER 1024 * 64
@@ -14,7 +15,8 @@
 SourceAAC::SourceAAC() :
 		readBuffer(AAC_READ_BUFFER),
 		fillBuffer(AAC_DECODE_BUFFER),
-		dataBuffer(AAC_OUT_BUFFER){
+		dataBuffer(AAC_OUT_BUFFER),
+		indexTask("AACIndex", indexThread, 3 * 1024, this){
 
 }
 
@@ -26,6 +28,7 @@ void SourceAAC::open(fs::File file){
 	close();
 
 	this->file = file;
+	filePath = file ? file.name() : "";
 	channels = sampleRate = bytesPerSample = 0;
 	readBuffer.clear();
 	dataBuffer.clear();
@@ -36,13 +39,6 @@ void SourceAAC::open(fs::File file){
 	}
 
 	bytesPerSample = 2;
-	buildFrameIndex();
-	if(sourceSampleRate == 0){
-		Serial.println("SourceAAC: no valid ADTS frames");
-		return;
-	}
-	file.seek(firstFrameOffset);
-
 	hAACDecoder = AACInitDecoder();
 	if(hAACDecoder == nullptr){
 		Serial.println("Decoder construct fail");
@@ -50,6 +46,7 @@ void SourceAAC::open(fs::File file){
 	}
 
 	addReadJob(true);
+	startFrameIndex();
 }
 
 void SourceAAC::setSongDoneCallback(void (*callback)()) {
@@ -57,10 +54,19 @@ void SourceAAC::setSongDoneCallback(void (*callback)()) {
 }
 
 bool SourceAAC::isReadReady() const {
-	return !readJobPending || readResult != nullptr;
+	const bool initialReadReady = !readJobPending || readResult != nullptr;
+	return ADTSTiming::playbackReady(
+			initialReadReady, getFrameIndexQuality() != INDEX_PENDING);
 }
 
 void SourceAAC::close(){
+	if(!indexTask.isStopped()){
+		indexTask.stop();
+		while(!indexTask.isStopped()){
+			Sched.loop(0);
+			delay(1);
+		}
+	}
 	if(readJobPending){
 		while(readResult == nullptr){
 			Sched.loop(0);
@@ -82,14 +88,17 @@ void SourceAAC::close(){
 		hAACDecoder = nullptr;
 	}
 	freeFrameIndex();
+	indexMutex.lock();
 	durationSourceFrames = 0;
 	indexedSourceFrameEnd = 0;
+	sourceSampleRate = firstFrameOffset = 0;
+	sourceChannels = adtsChannelConfiguration = 0;
+	indexMutex.unlock();
 	portENTER_CRITICAL(&timingMux);
 	elapsedSourceFrames = 0;
 	portEXIT_CRITICAL(&timingMux);
 	decodedSourceFrame = seekTargetSourceFrame = elapsedFrameRemainder = 0;
-	sourceSampleRate = firstFrameOffset = 0;
-	sourceChannels = adtsChannelConfiguration = 0;
+	filePath = "";
 	readEof = false;
 	discardPendingRead = false;
 	eofNotification.reset();
@@ -175,9 +184,18 @@ bool SourceAAC::prepareNextFrame(ADTSTiming::Header& header){
 		for(size_t offset = 0; offset + 7 <= available; offset++){
 			const ADTSTiming::ParseResult result = ADTSTiming::parseHeader(data + offset, available - offset, header);
 			if(result == ADTSTiming::INVALID) continue;
-			if(result == ADTSTiming::VALID &&
-			   header.sampleRate == sourceSampleRate &&
-			   (adtsChannelConfiguration == 0 || header.channels == adtsChannelConfiguration)){
+			indexMutex.lock();
+			const bool firstFrame = sourceSampleRate == 0;
+			const bool compatible = firstFrame ||
+					(header.sampleRate == sourceSampleRate &&
+					 (adtsChannelConfiguration == 0 ||
+					  header.channels == adtsChannelConfiguration));
+			if(firstFrame && result == ADTSTiming::VALID){
+				sourceSampleRate = header.sampleRate;
+				sourceChannels = adtsChannelConfiguration = header.channels;
+			}
+			indexMutex.unlock();
+			if(result == ADTSTiming::VALID && compatible){
 				if(header.frameLength <= available - offset){
 					fillBuffer.readMove(offset);
 					return true;
@@ -323,12 +341,20 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 			rewindAttempted = false;
 		}
 	}else{
-		const uint32_t outputRate = sampleRate == 0 ? sourceSampleRate : sampleRate;
-		const uint64_t numerator = elapsedFrameRemainder + uint64_t(samples) * sourceSampleRate;
+		indexMutex.lock();
+		const uint32_t sourceRate = sourceSampleRate;
+		const uint64_t duration = durationSourceFrames;
+		const bool durationKnown = frameIndexQuality == INDEX_COMPLETE ||
+								   frameIndexQuality == INDEX_PARTIAL;
+		indexMutex.unlock();
+		const uint32_t outputRate = sampleRate == 0 ? sourceRate : sampleRate;
+		const uint64_t numerator = elapsedFrameRemainder + uint64_t(samples) * sourceRate;
 		const uint64_t advanced = numerator / outputRate;
 		elapsedFrameRemainder = numerator % outputRate;
 		portENTER_CRITICAL(&timingMux);
-		elapsedSourceFrames = min(durationSourceFrames, elapsedSourceFrames + advanced);
+		elapsedSourceFrames = durationKnown
+							  ? min(duration, elapsedSourceFrames + advanced)
+							  : elapsedSourceFrames + advanced;
 		portEXIT_CRITICAL(&timingMux);
 		rewindAttempted = false;
 		addReadJob();
@@ -345,49 +371,79 @@ void SourceAAC::refill(){
 
 int SourceAAC::available(){
 	const uint64_t elapsed = getElapsedSourceFrames();
-	const uint64_t remaining = elapsed < durationSourceFrames ? durationSourceFrames - elapsed : 0;
+	const uint64_t duration = getDurationSourceFrames();
+	const uint64_t remaining = elapsed < duration ? duration - elapsed : 0;
 	return remaining > INT_MAX ? INT_MAX : int(remaining);
 }
 
 uint16_t SourceAAC::getDuration(){
-	if(sourceSampleRate == 0) return 0;
-	const uint64_t seconds = durationSourceFrames / sourceSampleRate;
+	indexMutex.lock();
+	const uint32_t rate = sourceSampleRate;
+	const uint64_t duration = durationSourceFrames;
+	const bool ready = frameIndexQuality == INDEX_COMPLETE ||
+					   frameIndexQuality == INDEX_PARTIAL;
+	indexMutex.unlock();
+	if(!ready || rate == 0) return 0;
+	const uint64_t seconds = duration / rate;
 	return seconds > UINT16_MAX ? UINT16_MAX : uint16_t(seconds);
 }
 
 uint16_t SourceAAC::getElapsed(){
-	if(sourceSampleRate == 0) return 0;
-	const uint64_t seconds = getElapsedSourceFrames() / sourceSampleRate;
+	const uint32_t rate = getSourceSampleRate();
+	if(rate == 0) return 0;
+	const uint64_t seconds = getElapsedSourceFrames() / rate;
 	return seconds > UINT16_MAX ? UINT16_MAX : uint16_t(seconds);
 }
 
 void SourceAAC::seek(uint16_t time, fs::SeekMode mode){
 	uint64_t frames;
-	if(!ADTSTiming::secondsToFrames(time, sourceSampleRate, frames)) return;
+	if(!ADTSTiming::secondsToFrames(time, getSourceSampleRate(), frames)) return;
 	if(mode == SeekCur){
 		const uint64_t elapsed = getElapsedSourceFrames();
 		frames = frames > UINT64_MAX - elapsed ? UINT64_MAX : frames + elapsed;
 	}else if(mode == SeekEnd){
-		frames = frames >= durationSourceFrames ? 0 : durationSourceFrames - frames;
+		const uint64_t duration = getDurationSourceFrames();
+		if(duration == 0 && frames != 0){
+			seekSourceFrame(frames);
+			return;
+		}
+		frames = frames >= duration ? 0 : duration - frames;
 	}
 	seekSourceFrame(frames);
 }
 
 bool SourceAAC::seekSourceFrame(uint64_t frame){
-	if(sourceSampleRate == 0 || frame > UINT32_MAX) return false;
-	frame = min(frame, durationSourceFrames);
-	uint32_t offset = firstFrameOffset;
+	if(frame > UINT32_MAX) return false;
+	uint32_t offset = 0;
 	uint64_t indexedFrame = 0;
+	indexMutex.lock();
+	offset = firstFrameOffset;
+	const FrameIndexQuality quality = frameIndexQuality;
+	const uint64_t duration = durationSourceFrames;
+	const uint64_t indexedEnd = indexedSourceFrameEnd;
+	const size_t indexCount = frameIndexCount;
+	if(sourceSampleRate == 0 || ((quality == INDEX_PENDING ||
+								quality == INDEX_UNAVAILABLE) && frame != 0)){
+		indexMutex.unlock();
+		return false;
+	}
+	frame = quality == INDEX_PENDING || quality == INDEX_UNAVAILABLE
+			? 0 : min(frame, duration);
 	if(frame != 0){
-		if(frameIndexCount == 0) return false;
-		const size_t index = ADTSTiming::findPreceding(frameIndex, frameIndexCount, frame);
+		if(indexCount == 0){
+			indexMutex.unlock();
+			return false;
+		}
+		const size_t index = ADTSTiming::findPreceding(frameIndex, indexCount, frame);
 		if(frameIndex[index].sourceFrame > frame ||
-		   (frameIndexQuality != INDEX_COMPLETE && frame > indexedSourceFrameEnd)){
+		   (quality != INDEX_COMPLETE && frame > indexedEnd)){
+			indexMutex.unlock();
 			return false;
 		}
 		offset = frameIndex[index].offset;
 		indexedFrame = frameIndex[index].sourceFrame;
 	}
+	indexMutex.unlock();
 	if(readJobPending && readResult != nullptr){
 		free(readResult->buffer);
 		delete readResult;
@@ -434,7 +490,12 @@ void SourceAAC::setRepeat(bool repeat) {
 }
 
 uint64_t SourceAAC::getDurationSourceFrames() const {
-	return durationSourceFrames;
+	indexMutex.lock();
+	const uint64_t frames = frameIndexQuality == INDEX_COMPLETE ||
+							frameIndexQuality == INDEX_PARTIAL
+							? durationSourceFrames : 0;
+	indexMutex.unlock();
+	return frames;
 }
 
 uint64_t SourceAAC::getElapsedSourceFrames() const {
@@ -445,49 +506,73 @@ uint64_t SourceAAC::getElapsedSourceFrames() const {
 }
 
 uint32_t SourceAAC::getSourceSampleRate() const {
-	return sourceSampleRate;
+	indexMutex.lock();
+	const uint32_t rate = sourceSampleRate;
+	indexMutex.unlock();
+	return rate;
 }
 
 uint8_t SourceAAC::getSourceChannels() const {
-	return sourceChannels;
+	indexMutex.lock();
+	const uint8_t count = sourceChannels;
+	indexMutex.unlock();
+	return count;
 }
 
 SourceAAC::FrameIndexQuality SourceAAC::getFrameIndexQuality() const {
-	return frameIndexQuality;
+	indexMutex.lock();
+	const FrameIndexQuality quality = frameIndexQuality;
+	indexMutex.unlock();
+	return quality;
 }
 
 void SourceAAC::freeFrameIndex(){
+	indexMutex.lock();
 	free(frameIndex);
 	frameIndex = nullptr;
 	frameIndexCount = frameIndexCapacity = 0;
 	frameIndexQuality = INDEX_UNAVAILABLE;
+	indexMutex.unlock();
 }
 
-void SourceAAC::buildFrameIndex(){
-	freeFrameIndex();
-	durationSourceFrames = 0;
-	indexedSourceFrameEnd = 0;
-	sourceSampleRate = 0;
-	sourceChannels = adtsChannelConfiguration = 0;
-	firstFrameOffset = 0;
+void SourceAAC::startFrameIndex(){
+	indexMutex.lock();
+	frameIndexQuality = INDEX_PENDING;
+	indexMutex.unlock();
+	indexTask.start(0);
+}
 
-	const size_t fileSize = file.size();
-	if(fileSize < 7) return;
+void SourceAAC::indexThread(Task* task){
+	static_cast<SourceAAC*>(task->arg)->buildFrameIndex(task);
+}
 
-	frameIndexCapacity = min(
+void SourceAAC::buildFrameIndex(Task* task){
+	fs::File indexFile = SD.open(filePath);
+	const size_t fileSize = indexFile ? indexFile.size() : 0;
+	size_t indexCapacity = min(
 			fileSize / size_t(7),
 			size_t(psramFound() ? AAC_INDEX_PSRAM_ENTRIES : AAC_INDEX_INTERNAL_ENTRIES));
-	if(frameIndexCapacity > 0){
-		const size_t bytes = frameIndexCapacity * sizeof(ADTSTiming::FrameIndexEntry);
-		frameIndex = static_cast<ADTSTiming::FrameIndexEntry*>(
+	ADTSTiming::FrameIndexEntry* newIndex = nullptr;
+	if(indexCapacity > 0){
+		const size_t bytes = indexCapacity * sizeof(ADTSTiming::FrameIndexEntry);
+		newIndex = static_cast<ADTSTiming::FrameIndexEntry*>(
 				psramFound() ? ps_malloc(bytes) : malloc(bytes));
-		if(frameIndex == nullptr) frameIndexCapacity = 0;
+	}
+	const bool indexAllocationFailed = indexCapacity > 0 && newIndex == nullptr;
+	if(indexAllocationFailed){
+		Serial.println("SourceAAC: ADTS seek index allocation failed; duration only");
+		indexCapacity = 0;
 	}
 
 	uint8_t* cache = static_cast<uint8_t*>(
 			psramFound() ? ps_malloc(AAC_INDEX_READ_CHUNK) : malloc(AAC_INDEX_READ_CHUNK));
-	if(cache == nullptr){
+	if(!indexFile || fileSize < 7 || cache == nullptr){
 		Serial.println("SourceAAC: ADTS scan buffer allocation failed");
+		free(cache);
+		free(newIndex);
+		indexMutex.lock();
+		frameIndexQuality = INDEX_UNAVAILABLE;
+		indexMutex.unlock();
 		return;
 	}
 
@@ -497,11 +582,34 @@ void SourceAAC::buildFrameIndex(){
 		size_t copied = 0;
 		while(copied < count){
 			if(position < cacheStart || position >= cacheStart + cacheSize){
-				if(!file.seek(position)) return false;
+				SDResult* seekResult = nullptr;
+				Sched.addJob(new SDJob{
+						.type = SDJob::SD_SEEK,
+						.file = indexFile,
+						.size = position,
+						.buffer = nullptr,
+						.result = &seekResult
+				});
+				while(seekResult == nullptr) delay(1);
+				const bool seeked = position == 0 || seekResult->size == position;
+				delete seekResult;
+				if(!seeked || !task->running) return false;
+
+				SDResult* result = nullptr;
+				Sched.addJob(new SDJob{
+						.type = SDJob::SD_READ,
+						.file = indexFile,
+						.size = min(size_t(AAC_INDEX_READ_CHUNK), fileSize - position),
+						.buffer = cache,
+						.result = &result
+				});
+				while(result == nullptr) delay(1);
 				cacheStart = position;
-				cacheSize = file.read(cache, min(size_t(AAC_INDEX_READ_CHUNK), fileSize - position));
-				Sched.loop(0);
+				cacheSize = result->size;
+				delete result;
 				if(cacheSize == 0) return false;
+				delay(1);
+				if(!task->running) return false;
 			}
 			const size_t cacheOffset = position - cacheStart;
 			const size_t part = min(count - copied, cacheSize - cacheOffset);
@@ -512,63 +620,53 @@ void SourceAAC::buildFrameIndex(){
 		return true;
 	};
 
-	uint8_t bytes[9];
-	size_t offset = 0;
-	bool foundFrame = false;
-	bool indexFull = false;
-	bool scanFailed = false;
-	while(offset + 7 <= fileSize){
-		if(!readAt(offset, bytes, 7)){
-			scanFailed = true;
-			break;
-		}
-		ADTSTiming::Header header;
-		ADTSTiming::ParseResult result = ADTSTiming::parseHeader(bytes, 7, header);
-		if(result == ADTSTiming::NEED_MORE && offset + 9 <= fileSize){
-			if(!readAt(offset, bytes, 9)){
-				scanFailed = true;
-				break;
-			}
-			result = ADTSTiming::parseHeader(bytes, 9, header);
-		}
-		if(result != ADTSTiming::VALID ||
-		   header.frameLength > fileSize - offset ||
-		   (foundFrame && (header.sampleRate != sourceSampleRate ||
-						   (sourceChannels != 0 && header.channels != sourceChannels)))){
-			offset++;
-			continue;
-		}
-
-		if(!foundFrame){
-			foundFrame = true;
-			firstFrameOffset = uint32_t(offset);
-			sourceSampleRate = header.sampleRate;
-			sourceChannels = adtsChannelConfiguration = header.channels;
-		}
-		const bool stored = frameIndexCount < frameIndexCapacity && durationSourceFrames <= UINT32_MAX;
-		if(stored){
-			frameIndex[frameIndexCount++] = {
-					uint32_t(offset),
-					uint32_t(durationSourceFrames)
-			};
-		}else{
-			indexFull = true;
-		}
-		if(durationSourceFrames > UINT64_MAX - header.sourceFrames){
-			durationSourceFrames = UINT64_MAX;
-			indexFull = true;
-			break;
-		}
-		durationSourceFrames += header.sourceFrames;
-		if(stored) indexedSourceFrameEnd = durationSourceFrames;
-		offset += header.frameLength;
-	}
+	size_t newIndexCount = 0;
+	uint64_t newIndexedEnd = 0;
+	bool indexFull = indexAllocationFailed;
+	ADTSTiming::ScanSummary summary;
+	const ADTSTiming::ScanResult scanResult = ADTSTiming::scanFrames(
+			fileSize,
+			readAt,
+			[&](uint32_t offset, uint64_t sourceFrame, const ADTSTiming::Header& header){
+				const bool stored = newIndexCount < indexCapacity && sourceFrame <= UINT32_MAX;
+				if(stored){
+					newIndex[newIndexCount++] = {
+							offset,
+							uint32_t(sourceFrame)
+					};
+					newIndexedEnd = sourceFrame + header.sourceFrames;
+				}else{
+					indexFull = true;
+				}
+			},
+			[&](){ return task->running; },
+			summary);
 	free(cache);
-
-	if(frameIndexCount == 0){
-		frameIndexQuality = INDEX_UNAVAILABLE;
-	}else{
-		frameIndexQuality = indexFull || scanFailed ? INDEX_PARTIAL : INDEX_COMPLETE;
+	indexFile.close();
+	if(scanResult == ADTSTiming::SCAN_CANCELLED || !task->running){
+		free(newIndex);
+		return;
 	}
+	const bool scanFailed = scanResult == ADTSTiming::SCAN_READ_ERROR;
+	if(summary.overflow) indexFull = true;
+
+	indexMutex.lock();
+	free(frameIndex);
+	frameIndex = newIndex;
+	frameIndexCount = newIndexCount;
+	frameIndexCapacity = indexCapacity;
+	durationSourceFrames = summary.sourceFrames;
+	indexedSourceFrameEnd = newIndexedEnd;
+	firstFrameOffset = summary.firstFrameOffset;
+	if(sourceSampleRate == 0) sourceSampleRate = summary.sampleRate;
+	if(sourceChannels == 0) sourceChannels = summary.channels;
+	if(adtsChannelConfiguration == 0) adtsChannelConfiguration = summary.channels;
+	frameIndexQuality = summary.sampleRate == 0
+						? INDEX_UNAVAILABLE
+						: (indexFull || scanFailed ? INDEX_PARTIAL : INDEX_COMPLETE);
+	portENTER_CRITICAL(&timingMux);
+	elapsedSourceFrames = min(durationSourceFrames, elapsedSourceFrames);
+	portEXIT_CRITICAL(&timingMux);
+	indexMutex.unlock();
 	if(scanFailed) Serial.println("SourceAAC: ADTS index scan read failed");
 }

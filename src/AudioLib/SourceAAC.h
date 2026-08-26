@@ -8,6 +8,8 @@
 #include "../Services/SDScheduler.h"
 #include "Decoder/libhelix-aac/aacdec.h"
 #include <Buffer/RingBuffer.h>
+#include <Sync/Mutex.h>
+#include <Util/Task.h>
 #include <aacenc_lib.h>
 #include <aacdecoder_lib.h>
 #include <Buffer/DataBuffer.h>
@@ -34,6 +36,7 @@ public:
 
 	enum FrameIndexQuality : uint8_t {
 		INDEX_UNAVAILABLE,
+		INDEX_PENDING,
 		INDEX_PARTIAL,
 		INDEX_COMPLETE
 	};
@@ -68,13 +71,18 @@ private:
 	void addReadJob(bool full = false);
 	void processReadJob(bool wait = false);
 	void resetDecoding();
-	void buildFrameIndex();
+	void startFrameIndex();
+	void buildFrameIndex(Task* task);
 	void freeFrameIndex();
+	static void indexThread(Task* task);
 
 	ADTSTiming::FrameIndexEntry* frameIndex = nullptr;
 	size_t frameIndexCount = 0;
 	size_t frameIndexCapacity = 0;
 	FrameIndexQuality frameIndexQuality = INDEX_UNAVAILABLE;
+	mutable Mutex indexMutex;
+	Task indexTask;
+	String filePath;
 	uint64_t durationSourceFrames = 0;
 	uint64_t indexedSourceFrameEnd = 0;
 	mutable portMUX_TYPE timingMux = portMUX_INITIALIZER_UNLOCKED;

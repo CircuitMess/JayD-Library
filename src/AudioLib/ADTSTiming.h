@@ -25,6 +25,22 @@ struct FrameIndexEntry {
 	uint32_t sourceFrame;
 };
 
+enum ScanResult : uint8_t {
+	SCAN_COMPLETE,
+	SCAN_CANCELLED,
+	SCAN_READ_ERROR
+};
+
+struct ScanSummary {
+	uint64_t sourceFrames = 0;
+	uint32_t firstFrameOffset = 0;
+	uint32_t sampleRate = 0;
+	uint8_t channels = 0;
+	bool overflow = false;
+};
+
+inline ParseResult parseHeader(const uint8_t* data, size_t size, Header& header);
+
 class EofNotification {
 public:
 	bool take(){
@@ -49,6 +65,53 @@ inline bool requiredDecodeBytes(size_t rawBlocks, size_t bytesPerBlock,
 	}
 	required = rawBlocks * bytesPerBlock;
 	return required <= capacity;
+}
+
+inline bool playbackReady(bool initialReadReady, bool indexFinished){
+	(void) indexFinished;
+	return initialReadReady;
+}
+
+template<typename ReadAt, typename OnFrame, typename KeepRunning>
+ScanResult scanFrames(size_t fileSize, ReadAt readAt, OnFrame onFrame,
+					  KeepRunning keepRunning, ScanSummary& summary){
+	uint8_t bytes[9];
+	size_t offset = 0;
+	bool foundFrame = false;
+	while(offset + 7 <= fileSize){
+		if(!keepRunning()) return SCAN_CANCELLED;
+		if(!readAt(offset, bytes, 7)) return SCAN_READ_ERROR;
+
+		Header header;
+		ParseResult result = parseHeader(bytes, 7, header);
+		if(result == NEED_MORE && offset + 9 <= fileSize){
+			if(!readAt(offset, bytes, 9)) return SCAN_READ_ERROR;
+			result = parseHeader(bytes, 9, header);
+		}
+		if(result != VALID ||
+		   header.frameLength > fileSize - offset ||
+		   (foundFrame && (header.sampleRate != summary.sampleRate ||
+						   (summary.channels != 0 && header.channels != summary.channels)))){
+			offset++;
+			continue;
+		}
+
+		if(!foundFrame){
+			foundFrame = true;
+			summary.firstFrameOffset = uint32_t(offset);
+			summary.sampleRate = header.sampleRate;
+			summary.channels = header.channels;
+		}
+		onFrame(uint32_t(offset), summary.sourceFrames, header);
+		if(summary.sourceFrames > UINT64_MAX - header.sourceFrames){
+			summary.sourceFrames = UINT64_MAX;
+			summary.overflow = true;
+			return SCAN_COMPLETE;
+		}
+		summary.sourceFrames += header.sourceFrames;
+		offset += header.frameLength;
+	}
+	return SCAN_COMPLETE;
 }
 
 inline ParseResult parseHeader(const uint8_t* data, size_t size, Header& header){
