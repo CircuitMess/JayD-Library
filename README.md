@@ -43,11 +43,44 @@ cmake --build . --target CMBuild
 ```
 This will compile the binaries, and place the .bin and .elf files in the build/ directory located in the root of the repository.
 
+## AAC timing and seeking
+
+`SourceAAC` measures time in source sample frames: one frame is one sample
+instant across all encoded channels, at the ADTS sample rate. Channel count
+does not multiply duration. The seconds-based API remains available and rounds
+down to whole seconds.
+
+ADTS indexing runs while a source is opened, before it is published to the
+audio thread. Each seek entry is 8 bytes. The bounded index uses at most 128 KiB
+per deck in PSRAM (16,384 frames), or 16 KiB without PSRAM (2,048 frames);
+the temporary scan cache is 4 KiB. The larger strict-frame decode buffers add
+35 KiB per source over the previous buffers. `getFrameIndexQuality()` reports
+whether the whole track is seekable; duration remains frame-counted even when
+the seek index reaches its cap. A `cm:esp32:jayd` build measured 1,026,334
+bytes of flash and 44,464 bytes of static RAM: +312 bytes of flash and no
+static-RAM increase versus `4ad5108`.
+
+Seek targets use a 64-bit source-frame API, but the compact index stores 32-bit
+frame positions, limiting frame-accurate seeking to the first 2^32 source
+frames (about 24.9 hours at 48 kHz). Seeking starts at the preceding ADTS frame
+and discards decoded PCM up to the target. Accuracy is therefore bounded by
+the decoder's sample-rate conversion and AAC priming; one 256-sample output
+block of accuracy has not been established on hardware.
+
 To compile the binary, and upload it according to the port set in CMakeLists.txt, run
 
 ```cmake --build . --target CMBuild```
 
 in the cmake directory.
+
+## Deck rate control
+
+`SpeedModifier` exposes a bounded Q16.16 rate (`0.5x` to `1.5x`, with `65536`
+as neutral). The legacy 0-255 API maps `127` to neutral. Rate changes ramp over
+at most 256 output samples and use linear interpolation without allocating in
+`generate()`. This is resampling, so pitch changes with rate; key lock and time
+stretching are not provided.
+
 # Used libraries and copyright notices
 [See NOTICE](https://github.com/CircuitMess/JayD-Library/blob/master/NOTICE.md)
 

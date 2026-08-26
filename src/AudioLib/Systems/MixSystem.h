@@ -11,16 +11,37 @@
 #include "../Mixer.h"
 #include "../SourceWAV.h"
 #include "../EffectType.hpp"
+#include "../Effects/ThreeBandEQ.h"
 #include "../SourceAAC.h"
 #include <Sync/Queue.h>
+#include <Sync/Mutex.h>
 #include "../InfoGenerator.h"
 #include "../OutputWAV.h"
 
 struct MixRequest {
-	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_EFFECT, SET_EFFECT_INTENSITY, SET_INFO, SET_SEEK, RECORD } type;
+	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_RATE, NUDGE_RATE, SET_EFFECT, SET_EFFECT_INTENSITY, SET_EQ, SET_INFO, SET_SEEK, RECORD, OPEN } type;
 	uint8_t channel;
 	uint8_t slot;
-	size_t value;
+	uint64_t value;
+};
+
+enum class RecordingState : uint8_t {
+	IDLE,
+	STARTING,
+	RECORDING,
+	STOPPING,
+	COMPLETE,
+	FAILED
+};
+
+struct RecordingStatus {
+	RecordingState state;
+	RecordingError error;
+	uint32_t bytes;
+	uint32_t durationMs;
+	uint32_t droppedBytes;
+	uint8_t finalizeQueueRetries;
+	bool fileValid;
 };
 
 class MixSystem {
@@ -32,6 +53,7 @@ public:
 	constexpr static const char* const recordPath = "/.Jay-D_Recording.wav";
 
 	bool open(uint8_t channel, const fs::File& file);
+	bool openChannel(uint8_t channel, const fs::File& file);
 
 	Task audioTask;
 	static void audioThread(Task* task);
@@ -42,15 +64,33 @@ public:
 
 	uint16_t getDuration(uint8_t channel);
 	uint16_t getElapsed(uint8_t channel);
+	uint64_t getDurationSourceFrames(uint8_t channel);
+	uint64_t getElapsedSourceFrames(uint8_t channel);
+	uint32_t getSourceSampleRate(uint8_t channel);
+	SourceAAC::FrameIndexQuality getFrameIndexQuality(uint8_t channel);
+	bool hasChannel(uint8_t channel);
+	uint8_t getVolume(uint8_t channel);
+	uint8_t getMix();
+	// Coarse decoder status for the given channel, or Status::CLOSED if no
+	// source is currently open on it (mirrors hasChannel's locking).
+	SourceAAC::Status getChannelStatus(uint8_t channel);
 
 	void setVolume(uint8_t channel, uint8_t volume);
 	void setMix(uint8_t ratio);
 
+	// Re-applies the master output gain from the current Settings volume
+	// level. Call after externally changing Settings.get().volumeLevel.
+	void updateGain();
+
 	void addSpeed(uint8_t channel);
 	void removeSpeed(uint8_t channel);
 	void setSpeed(uint8_t channel, uint8_t speed);
+	void setRate(uint8_t channel, SpeedModifier::Rate rate);
+	SpeedModifier::Rate getRate(uint8_t channel);
+	void nudgeRate(uint8_t channel, int32_t amount);
 	void setEffect(uint8_t channel, uint8_t slot, EffectType type);
 	void setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intensity);
+	bool setEQ(uint8_t channel, ThreeBandEQ::Band band, uint8_t level);
 
 	void setOutInfo(InfoGenerator* outInfoGen);
 	void setChannelInfo(uint8_t channel, InfoGenerator* channelInfoGen);
@@ -60,46 +100,73 @@ public:
 	bool isChannelPaused(uint8_t channel);
 
 	void seekChannel(uint8_t channel, uint16_t time);
+	bool seekChannelSourceFrame(uint8_t channel, uint64_t frame);
 
-	void startRecording();
-	void stopRecording();
+	// Return values report whether the request was accepted. Poll status for
+	// asynchronous write/finalization failures.
+	bool startRecording();
+	bool stopRecording();
 	bool isRecording();
+	RecordingStatus getRecordingStatus() const;
 
 	void setChannelDoneCallback(uint8_t channel, void(*callback)());
 
 private:
+	static constexpr uint8_t requestCapacity = 6;
 	bool running = false;
 
 	Queue queue;
+	Mutex queueMutex;
+	Mutex sourceMutex;
+	Mutex recordingMutex;
+	MixRequest requests[requestCapacity] = {};
+	bool requestUsed[requestCapacity] = {};
 
-	fs::File file[2];
 	fs::File fileOut;
 
 	SourceAAC* source[2] = { nullptr };
+	SourceAAC* retiredSource[2] = { nullptr };
+	uint8_t volume[2] = { 255, 255 };
 
 	EffectProcessor* effector[2];
+	ThreeBandEQ eq[2];
 	Mixer* mixer;
 	OutputI2S* i2s;
 	OutputWAV* fsOut;
 	OutputSplitter* out;
+	volatile RecordingState recordingState = RecordingState::IDLE;
+	volatile RecordingError recordingError = RecordingError::NONE;
+	volatile bool recordingApplied = false;
 
 	SpeedModifier* speed[2] = { nullptr };
 
 	void _addSpeed(uint8_t channel);
 	void _removeSpeed(uint8_t channel);
 	void _setSpeed(uint8_t channel, uint8_t speed);
+	void _setRate(uint8_t channel, SpeedModifier::Rate rate);
+	void _nudgeRate(uint8_t channel, int32_t amount);
 	void _setEffect(uint8_t channel, uint8_t slot, EffectType type);
 	void _setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intensity);
+	bool _setEQ(uint8_t channel, ThreeBandEQ::Band band, uint8_t level);
 	void _setInfoGenerator(uint8_t channel, InfoGenerator* generator);
-	void _seekChannel(uint8_t channel, uint16_t time);
+	void _seekChannel(uint8_t channel, uint64_t frame);
 	void _startRecording();
 	void _stopRecording();
+	void serviceRecording();
+	void finishRecordingSync();
+	void _openChannel(uint8_t channel, SourceAAC* source);
+	bool replaceSource(uint8_t channel, SourceAAC* source);
+	int8_t reserveRequest(const MixRequest& request);
+	bool sendRequest(uint8_t index);
+	bool enqueueRequest(const MixRequest& request);
+	void releaseRequest(uint8_t index);
+	void clearRequests();
+	void cleanupRetiredSources();
 
 	static Effect* (* getEffect[EffectType::COUNT])();
 
-	uint16_t seek[2];
+	uint64_t seekFrame[2] = {};
 	int seekPending[2] = { 0 };
-
 };
 
 #endif //JAYD_LIBRARY_MIXSYSTEM_H
