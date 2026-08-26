@@ -39,6 +39,7 @@ void SourceAAC::open(fs::File file){
 	buildFrameIndex();
 	if(sourceSampleRate == 0){
 		Serial.println("SourceAAC: no valid ADTS frames");
+		status = Status::FAILED;
 		return;
 	}
 	file.seek(firstFrameOffset);
@@ -46,9 +47,11 @@ void SourceAAC::open(fs::File file){
 	hAACDecoder = AACInitDecoder();
 	if(hAACDecoder == nullptr){
 		Serial.println("Decoder construct fail");
+		status = Status::FAILED;
 		return;
 	}
 
+	status = Status::STARVED;
 	addReadJob(true);
 }
 
@@ -58,6 +61,10 @@ void SourceAAC::setSongDoneCallback(void (*callback)()) {
 
 bool SourceAAC::isReadReady() const {
 	return !readJobPending || readResult != nullptr;
+}
+
+SourceAAC::Status SourceAAC::getStatus() const {
+	return status.load();
 }
 
 void SourceAAC::close(){
@@ -93,6 +100,7 @@ void SourceAAC::close(){
 	readEof = false;
 	discardPendingRead = false;
 	eofNotification.reset();
+	status = Status::CLOSED;
 }
 
 SourceAAC::~SourceAAC(){
@@ -215,11 +223,13 @@ bool SourceAAC::prepareNextFrame(ADTSTiming::Header& header){
 size_t SourceAAC::generate(int16_t* outBuffer){
 	if(!file){
 		Serial.println("file false");
+		status = Status::FAILED;
 		return 0;
 	}
 
 	if(!hAACDecoder){
 		Serial.println("Decoder false");
+		status = Status::FAILED;
 		return 0;
 	}
 
@@ -310,6 +320,7 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 	}
 
 	if(samples == 0){
+		status = Status::END_OF_STREAM;
 		if(readEof && eofNotification.take() && songDoneCallback != nullptr) {
 			songDoneCallback();
 		}
@@ -323,6 +334,7 @@ size_t SourceAAC::generate(int16_t* outBuffer){
 			rewindAttempted = false;
 		}
 	}else{
+		status = Status::DATA;
 		const uint32_t outputRate = sampleRate == 0 ? sourceSampleRate : sampleRate;
 		const uint64_t numerator = elapsedFrameRemainder + uint64_t(samples) * sourceSampleRate;
 		const uint64_t advanced = numerator / outputRate;

@@ -38,8 +38,8 @@ MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 16 * 1024, this), qu
 								.use_apll = false
 						}, i2s_pin_config, I2S_NUM_0);
 
-	i2s->setGain(0.4f*((float) Settings.get().volumeLevel) / 255.0f);
 	i2s->setSource(mixer);
+	updateGain();
 
 	fsOut = new OutputWAV();
 
@@ -389,12 +389,25 @@ bool MixSystem::hasChannel(uint8_t c){
 	return loaded;
 }
 
+SourceAAC::Status MixSystem::getChannelStatus(uint8_t c){
+	if(c >= 2) return SourceAAC::Status::CLOSED;
+	cleanupRetiredSources();
+	sourceMutex.lock();
+	SourceAAC::Status status = source[c] != nullptr ? source[c]->getStatus() : SourceAAC::Status::CLOSED;
+	sourceMutex.unlock();
+	return status;
+}
+
 uint8_t MixSystem::getVolume(uint8_t c){
 	return c < 2 ? volume[c] : 0;
 }
 
 uint8_t MixSystem::getMix(){
 	return mixer ? mixer->getMixRatio() : 128;
+}
+
+void MixSystem::updateGain(){
+	i2s->setGain(0.4f*((float) Settings.get().volumeLevel) / 255.0f);
 }
 
 void MixSystem::setVolume(uint8_t c, uint8_t volume){

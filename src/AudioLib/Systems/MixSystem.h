@@ -70,9 +70,16 @@ public:
 	bool hasChannel(uint8_t channel);
 	uint8_t getVolume(uint8_t channel);
 	uint8_t getMix();
+	// Coarse decoder status for the given channel, or Status::CLOSED if no
+	// source is currently open on it (mirrors hasChannel's locking).
+	SourceAAC::Status getChannelStatus(uint8_t channel);
 
 	void setVolume(uint8_t channel, uint8_t volume);
 	void setMix(uint8_t ratio);
+
+	// Re-applies the master output gain from the current Settings volume
+	// level. Call after externally changing Settings.get().volumeLevel.
+	void updateGain();
 
 	void addSpeed(uint8_t channel);
 	void removeSpeed(uint8_t channel);

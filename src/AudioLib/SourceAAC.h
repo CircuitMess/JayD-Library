@@ -12,10 +12,23 @@
 #include <aacdecoder_lib.h>
 #include <Buffer/DataBuffer.h>
 #include "ADTSTiming.h"
+#include <atomic>
 
 class SourceAAC : public Source
 {
 public:
+	// Coarse decoder status for status-reporting consumers (e.g. remote/UI
+	// screens). Purely observational: no control-flow decision anywhere in
+	// this class depends on it, so it cannot change decode/timing/EOF
+	// behavior.
+	enum class Status : uint8_t {
+		CLOSED,
+		DATA,
+		STARVED,
+		END_OF_STREAM,
+		FAILED
+	};
+
 	SourceAAC();
 	SourceAAC(fs::File file);
 	~SourceAAC();
@@ -49,8 +62,14 @@ public:
 	void setSongDoneCallback(void (*callback)());
 	bool isReadReady() const;
 
+	// Coarse, observational decoder status (see enum Status above). Thread-safe
+	// for the same audio-task/main-thread split as the rest of this class.
+	Status getStatus() const;
+
 private:
 	fs::File file;
+
+	std::atomic<Status> status{Status::CLOSED};
 
 	float volume = 1.0f;
 
