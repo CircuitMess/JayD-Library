@@ -11,6 +11,7 @@
 #include "../Mixer.h"
 #include "../SourceWAV.h"
 #include "../EffectType.hpp"
+#include "../Effects/ThreeBandEQ.h"
 #include "../SourceAAC.h"
 #include <Sync/Queue.h>
 #include <Sync/Mutex.h>
@@ -18,7 +19,7 @@
 #include "../OutputWAV.h"
 
 struct MixRequest {
-	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_RATE, NUDGE_RATE, SET_EFFECT, SET_EFFECT_INTENSITY, SET_INFO, SET_SEEK, RECORD, OPEN } type;
+	enum { ADD_SPEED, REMOVE_SPEED, SET_SPEED, SET_RATE, NUDGE_RATE, SET_EFFECT, SET_EFFECT_INTENSITY, SET_EQ, SET_INFO, SET_SEEK, RECORD, OPEN } type;
 	uint8_t channel;
 	uint8_t slot;
 	uint64_t value;
@@ -89,6 +90,7 @@ public:
 	void nudgeRate(uint8_t channel, int32_t amount);
 	void setEffect(uint8_t channel, uint8_t slot, EffectType type);
 	void setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intensity);
+	bool setEQ(uint8_t channel, ThreeBandEQ::Band band, uint8_t level);
 
 	void setOutInfo(InfoGenerator* outInfoGen);
 	void setChannelInfo(uint8_t channel, InfoGenerator* channelInfoGen);
@@ -127,6 +129,7 @@ private:
 	uint8_t volume[2] = { 255, 255 };
 
 	EffectProcessor* effector[2];
+	ThreeBandEQ eq[2];
 	Mixer* mixer;
 	OutputI2S* i2s;
 	OutputWAV* fsOut;
@@ -144,6 +147,7 @@ private:
 	void _nudgeRate(uint8_t channel, int32_t amount);
 	void _setEffect(uint8_t channel, uint8_t slot, EffectType type);
 	void _setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intensity);
+	bool _setEQ(uint8_t channel, ThreeBandEQ::Band band, uint8_t level);
 	void _setInfoGenerator(uint8_t channel, InfoGenerator* generator);
 	void _seekChannel(uint8_t channel, uint64_t frame);
 	void _startRecording();

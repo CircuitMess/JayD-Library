@@ -22,6 +22,7 @@ MixSystem::MixSystem() : audioTask("MixAudio", audioThread, 16 * 1024, this), qu
 		for(int j = 0; j < 3; j++){
 			effector[i]->addEffect(nullptr);
 		}
+		effector[i]->addEffect(&eq[i]);
 
 		mixer->addSource(effector[i]);
 	}
@@ -98,6 +99,7 @@ bool MixSystem::replaceSource(uint8_t c, SourceAAC* newSource){
 	}
 	newSource->setVolume(volume[c]);
 	auto oldSource = source[c];
+	eq[c].reset();
 	source[c] = newSource;
 	if(speed[c]){
 		speed[c]->setSource(newSource);
@@ -255,6 +257,9 @@ void MixSystem::audioThread(Task* task){
 					break;
 				case MixRequest::SET_EFFECT_INTENSITY:
 					system->_setEffectIntensity(request.channel, request.slot, request.value);
+					break;
+				case MixRequest::SET_EQ:
+					system->_setEQ(request.channel, static_cast<ThreeBandEQ::Band>(request.slot), request.value);
 					break;
 				case MixRequest::SET_INFO:
 					system->_setInfoGenerator(request.channel, reinterpret_cast<InfoGenerator*>(uintptr_t(request.value)));
@@ -500,6 +505,15 @@ void MixSystem::setEffectIntensity(uint8_t channel, uint8_t slot, uint8_t intens
 	enqueueRequest({ MixRequest::SET_EFFECT_INTENSITY, channel, slot, intensity });
 }
 
+bool MixSystem::setEQ(uint8_t channel, ThreeBandEQ::Band band, uint8_t level){
+	if(channel >= 2 || static_cast<uint8_t>(band) >= static_cast<uint8_t>(ThreeBandEQ::Band::Count)){
+		return false;
+	}
+	if(!out->isRunning()) return _setEQ(channel, band, level);
+
+	return enqueueRequest({ MixRequest::SET_EQ, channel, static_cast<uint8_t>(band), level });
+}
+
 void MixSystem::_addSpeed(uint8_t c){
 	if(c >= 2 || !effector[c] || !source[c] || speed[c]) return;
 	sourceMutex.lock();
@@ -547,6 +561,10 @@ void MixSystem::_setEffect(uint8_t c, uint8_t s, EffectType type){
 void MixSystem::_setEffectIntensity(uint8_t c, uint8_t s, uint8_t intensity){
 	if(c >= 2 || s >= 3 || !effector[c] || !effector[c]->getEffect(s)) return;
 	effector[c]->getEffect(s)->setIntensity(intensity);
+}
+
+bool MixSystem::_setEQ(uint8_t c, ThreeBandEQ::Band band, uint8_t level){
+	return c < 2 && eq[c].setLevel(band, level);
 }
 
 Effect* (* MixSystem::getEffect[])() = {
@@ -606,7 +624,10 @@ bool MixSystem::seekChannelSourceFrame(uint8_t channel, uint64_t frame){
 	if(!out->isRunning()){
 		sourceMutex.lock();
 		const bool success = source[channel] && source[channel]->seekSourceFrame(frame);
-		if(success && speed[channel]) speed[channel]->reset();
+		if(success){
+			if(speed[channel]) speed[channel]->reset();
+			eq[channel].reset();
+		}
 		sourceMutex.unlock();
 		return success;
 	}
@@ -634,8 +655,9 @@ void MixSystem::_seekChannel(uint8_t channel, uint64_t frame){
 	if(seekPending[channel] > 0) seekPending[channel]--;
 	SourceAAC* channelSource = source[channel];
 	sourceMutex.unlock();
-	if(channelSource && channelSource->seekSourceFrame(frame) && speed[channel]){
-		speed[channel]->reset();
+	if(channelSource && channelSource->seekSourceFrame(frame)){
+		if(speed[channel]) speed[channel]->reset();
+		eq[channel].reset();
 	}
 }
 
