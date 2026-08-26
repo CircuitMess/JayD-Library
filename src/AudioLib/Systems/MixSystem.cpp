@@ -152,7 +152,12 @@ void MixSystem::_openChannel(uint8_t channel, SourceAAC* newSource){
 
 	const bool wasPaused = mixer->isChannelPaused(channel);
 	mixer->pauseChannel(channel);
-	if(replaceSource(channel, newSource) || !wasPaused) mixer->resumeChannel(channel);
+	replaceSource(channel, newSource);
+	// Restore the caller's prior pause state regardless of whether the
+	// replacement succeeded: a paused deck must stay paused across a
+	// hot-swap, and a failed replacement must not leave a previously
+	// playing deck stuck paused.
+	if(!wasPaused) mixer->resumeChannel(channel);
 }
 
 int8_t MixSystem::reserveRequest(const MixRequest& request){
