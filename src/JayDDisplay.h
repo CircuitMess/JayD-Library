@@ -14,6 +14,7 @@ public:
 	static lgfx::Panel_ST7735S* panel1();
 	static lgfx::Panel_ST7735S* panel2();
 	static lgfx::Panel_ST7735S* panel3();
+	static lgfx::Panel_ST7735S* panel4();
 
 };
 

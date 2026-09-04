@@ -1,5 +1,6 @@
 #include "JayDDisplay.h"
 #include "JayD.h"
+#include "Pins.h"
 
 lgfx::Panel_ST7735S* JayDDisplay::panel1(){
 	auto bus = new lgfx::Bus_SPI();
@@ -16,8 +17,8 @@ lgfx::Panel_ST7735S* JayDDisplay::panel1(){
 		cfg.spi_3wire = false;
 		cfg.use_lock = true;
 		cfg.dma_channel = 1;
-		cfg.pin_sclk = SPI_SCK;
-		cfg.pin_mosi = SPI_MOSI;
+		cfg.pin_sclk = PIN(SPI_SCK);
+		cfg.pin_mosi = PIN(SPI_MOSI);
 		cfg.pin_miso = -1;
 		cfg.pin_dc = 33;
 
@@ -68,8 +69,8 @@ lgfx::Panel_ST7735S* JayDDisplay::panel2(){
 		cfg.spi_3wire = false;
 		cfg.use_lock = true;
 		cfg.dma_channel = 1;
-		cfg.pin_sclk = SPI_SCK;
-		cfg.pin_mosi = SPI_MOSI;
+		cfg.pin_sclk = PIN(SPI_SCK);
+		cfg.pin_mosi = PIN(SPI_MOSI);
 		cfg.pin_miso = -1;
 		cfg.pin_dc = 33;
 
@@ -120,8 +121,8 @@ lgfx::Panel_ST7735S* JayDDisplay::panel3(){
 		cfg.spi_3wire = false;
 		cfg.use_lock = true;
 		cfg.dma_channel = 1;
-		cfg.pin_sclk = SPI_SCK;
-		cfg.pin_mosi = SPI_MOSI;
+		cfg.pin_sclk = PIN(SPI_SCK);
+		cfg.pin_mosi = PIN(SPI_MOSI);
 		cfg.pin_miso = -1;
 		cfg.pin_dc = 33;
 
@@ -134,6 +135,58 @@ lgfx::Panel_ST7735S* JayDDisplay::panel3(){
 
 		cfg.pin_cs = 32;
 		cfg.pin_rst = 2;
+		cfg.pin_busy = -1;
+
+
+		cfg.memory_width = 128;
+		cfg.memory_height = 160;
+		cfg.panel_width = 128;
+		cfg.panel_height = 160;
+		cfg.offset_x = 2;
+		cfg.offset_y = -1;
+		cfg.offset_rotation = 4;
+		cfg.readable = false;
+		cfg.invert = false;
+		cfg.rgb_order = true;
+		cfg.dlen_16bit = false;
+		cfg.bus_shared = true;
+
+
+		panel->config(cfg);
+	}
+
+	return panel;
+}
+
+lgfx::Panel_ST7735S* JayDDisplay::panel4(){
+	auto bus = new lgfx::Bus_SPI();
+	auto panel = new lgfx::Panel_ST7735S();
+
+	{
+		auto cfg = bus->config();
+
+
+		cfg.spi_host = VSPI_HOST;
+		cfg.spi_mode = 0;
+		cfg.freq_write = 27000000;
+		cfg.freq_read = 27000000;
+		cfg.spi_3wire = false;
+		cfg.use_lock = true;
+		cfg.dma_channel = 1;
+		cfg.pin_sclk = PIN(SPI_SCK);
+		cfg.pin_mosi = PIN(SPI_MOSI);
+		cfg.pin_miso = -1;
+		cfg.pin_dc = 33;
+
+		bus->config(cfg);
+		panel->setBus(bus);
+	}
+
+	{
+		auto cfg = panel->config();
+
+		cfg.pin_cs = 32;
+		cfg.pin_rst = 12;
 		cfg.pin_busy = -1;
 
 

@@ -2,12 +2,15 @@
 #include <Devices/Matrix/MatrixOutputBuffer.h>
 #include <Util/HWRevision.h>
 #include <Util/gifdec.h>
+#include <SD.h>
+#include <SD_MMC.h>
+#include "Pins.h"
 
 const i2s_pin_config_t i2s_pin_config = {
-		.bck_io_num = I2S_BCK,
-		.ws_io_num = I2S_WS,
-		.data_out_num = I2S_DO,
-		.data_in_num = I2S_DI
+		.bck_io_num = PIN(I2S_BCK),
+		.ws_io_num = PIN(I2S_WS),
+		.data_out_num = PIN(I2S_DO),
+		.data_in_num = PIN(I2S_DI)
 };
 
 IS31FL3731 charlie;
@@ -36,26 +39,43 @@ void JayDImpl::begin(){
 
 	initVer();
 
-	SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI, SPI_SS);
-	SPI.setFrequency(60000000);
-	if(!SD.begin(SD_CS, SPI)){
+	//Ovo je neki SD pin na kojem ne smijemo imati pull-up, jer je strapping pin. Ali SD MMC ne radi bez ovoga, zato koristimo interni pull-up.
+	if (ver == Ver::v1_3){
+		gpio_set_pull_mode(GPIO_NUM_2, GPIO_PULLUP_ONLY);
+	}
+	SPI.begin(PIN(SPI_SCK), PIN(SPI_MISO), PIN(SPI_MOSI), PIN(SPI_SS));
+
+	auto sdCheck = [](const Ver ver) {
+		if (ver == Ver::v1_3){
+			return !SD_MMC.begin("/sdcard", true);
+		}
+		SPI.setFrequency(60000000);
+		return !SD.begin(PIN(SD_CS), SPI);
+	};
+	if(sdCheck(ver)){
 		Serial.println("No SD card");
 	}
+
 	if(!SPIFFS.begin()){
 		Serial.println("SPIFFS error");
 	}
 
-	if(HWRevision::get() == 2){
-		display.getTft()->setPanel(JayDDisplay::panel3());
-	}else if(HWRevision::get() == 1){
-		display.getTft()->setPanel(JayDDisplay::panel2());
+	if(HWRevision::get() == 3){
+		display.getTft()->setPanel(JayDDisplay::panel4());
 	}else{
-		display.getTft()->setPanel(JayDDisplay::panel1());
+		if (HWRevision::get() == 2){
+			display.getTft()->setPanel(JayDDisplay::panel3());
+		}else if(HWRevision::get() == 1){
+			display.getTft()->setPanel(JayDDisplay::panel2());
+		}else{
+			display.getTft()->setPanel(JayDDisplay::panel1());
+		}
 	}
+
 	display.begin();
 	SPI.setFrequency(20000000);
 
-	Wire.begin(I2C_SDA, I2C_SCL);
+	Wire.begin(PIN(I2C_SDA), PIN(I2C_SCL));
 	Wire.setClock(400000);
 
 	charlie.init();
@@ -74,8 +94,8 @@ void JayDImpl::initVer(int override){
 	if(verInited) return;
 	verInited = true;
 
-	static constexpr Ver map[] = { Ver::v1_0, Ver::v1_1, Ver::v1_2 };
-	const auto hw = override == -1 ? HWRevision::get() : override;
+	static constexpr Ver map[] = { Ver::v1_0, Ver::v1_1, Ver::v1_2, Ver::v1_3 };
+	const int hw = override == -1 ? HWRevision::get() : override;
 
 	if(hw >= 0 && hw < sizeof(map) / sizeof(map[0])){
 		ver = map[hw];
@@ -86,4 +106,68 @@ void JayDImpl::initVer(int override){
 
 Display& JayDImpl::getDisplay(){
 	return display;
+}
+
+File JayDImpl::SD_open(const char* path, const char* mode){
+	if (ver == Ver::v1_3){
+		return SD_MMC.open(path, mode);
+	}
+	return SD.open(path, mode);
+}
+
+File JayDImpl::SD_open(String path, const char* mode){
+	if (ver == Ver::v1_3){
+		return SD_MMC.open(path, mode);
+	}
+	return SD.open(path, mode);
+}
+
+bool JayDImpl::SD_exists(const char* path){
+	if (ver == Ver::v1_3){
+		return SD_MMC.exists(path);
+	}
+	return SD.exists(path);
+}
+
+bool JayDImpl::SD_exists(const String& path){
+	if (ver == Ver::v1_3){
+		return SD_MMC.exists(path);
+	}
+	return SD.exists(path);
+}
+
+bool JayDImpl::SD_remove(const char* path){
+	if (ver == Ver::v1_3){
+		return SD_MMC.remove(path);
+	}
+	return SD.remove(path);
+}
+
+bool JayDImpl::SD_remove(const String& path){
+	if (ver == Ver::v1_3){
+		return SD_MMC.remove(path);
+	}
+	return SD.remove(path);
+}
+
+bool JayDImpl::SD_begin(){
+	if (ver == Ver::v1_3){
+		return SD_MMC.begin();
+	}
+	return SD.begin();
+}
+
+bool JayDImpl::SD_begin(uint8_t ssPin, SPIClass& spi){
+	return SD.begin(ssPin, spi);
+}
+
+bool JayDImpl::SD_begin(const char* mountpoint, bool mode1bit){
+	return SD_MMC.begin(mountpoint, mode1bit);
+}
+
+void JayDImpl::SD_end(){
+	if (ver == Ver::v1_3){
+		return SD_MMC.end();
+	}
+	return SD.end();
 }
