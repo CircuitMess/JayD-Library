@@ -10,25 +10,6 @@
 enum class Pin : uint8_t {
 	PIN_BL,
 	SD_CS,
-	ENC_MID,
-	ENC_L1,
-	ENC_L2,
-	ENC_L3,
-	ENC_R1,
-	ENC_R2,
-	ENC_R3,
-	POT_L,
-	POT_MID,
-	POT_R,
-	BTN_L,
-	BTN_R,
-	BTN_MID,
-	BTN_L1,
-	BTN_L2,
-	BTN_L3,
-	BTN_R1,
-	BTN_R2,
-	BTN_R3,
 	I2S_WS,
 	I2S_DO,
 	I2S_BCK,
@@ -38,7 +19,10 @@ enum class Pin : uint8_t {
 	SPI_SCK,
 	SPI_MISO,
 	SPI_MOSI,
-	SPI_SS
+	SPI_SS,
+	PIN_DC,
+	PIN_CS,
+	PIN_RST
 };
 
 class Pins {
@@ -54,6 +38,7 @@ public:
 	static int get(Pin pin);
 
 	static void setLatest();
+	static void setRev(uint8_t revision);
 
 private:
 	Pins();
@@ -64,15 +49,13 @@ private:
 
 	void initPinMaps();
 
-	//For original Jay-D, Jay-D v2
+	//For original Jay-D, Jay-D v1.7
 	PinMap Revision1;
 
-	//For Jay-D v3 (sd fix)
+	//For Jay-D v1.9 (sd fix)
 	PinMap Revision2;
 
 	std::vector<PinMap*> pinMaps = { &Revision1, &Revision2 };
 };
-
-extern Pins JayDPins;
 
 #endif //JAYD_LIBRARY_PINS_H

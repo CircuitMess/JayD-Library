@@ -51,29 +51,27 @@ void Pins::setLatest(){
 	instance->currentMap = instance->pinMaps.back();
 }
 
+void Pins::setRev(const uint8_t revision){
+	if(instance == nullptr){
+		instance = new Pins();
+	}
+
+	if(revision == 0 || revision == 1 || revision == 2){
+		instance->currentMap = &instance->Revision1;
+	}else if(revision == 3){
+		instance->currentMap = &instance->Revision2;
+	}else{
+		while(true){
+			printf("Pins setRev: non-existent revision: %d\n", revision);
+			while(true);
+		}
+	}
+}
+
 void Pins::initPinMaps(){
 	Revision1 = {
 		{ Pin::PIN_BL,25 },
 		{ Pin::SD_CS,22 },
-		{ Pin::ENC_MID,0 },
-		{ Pin::ENC_L1,1 },
-		{ Pin::ENC_L2,6 },
-		{ Pin::ENC_L3,5 },
-		{ Pin::ENC_R1,4 },
-		{ Pin::ENC_R2,3 },
-		{ Pin::ENC_R3,2 },
-		{ Pin::POT_L,1 },
-		{ Pin::POT_MID,0 },
-		{ Pin::POT_R,2 },
-		{ Pin::BTN_L,0 },
-		{ Pin::BTN_R,1 },
-		{ Pin::BTN_MID,2 },
-		{ Pin::BTN_L1,3 },
-		{ Pin::BTN_L2,8 },
-		{ Pin::BTN_L3,7 },
-		{ Pin::BTN_R1,6 },
-		{ Pin::BTN_R2,5 },
-		{ Pin::BTN_R3,4 },
 		{ Pin::I2S_WS,4 },
 		{ Pin::I2S_DO,14 },
 		{ Pin::I2S_BCK,21 },
@@ -84,30 +82,13 @@ void Pins::initPinMaps(){
 		{ Pin::SPI_MISO,19 },
 		{ Pin::SPI_MOSI,23 },
 		{ Pin::SPI_SS, -1 },
+		{ Pin::PIN_DC, 33 },
+		{ Pin::PIN_CS, 32 },
+		{ Pin::PIN_RST, 2 },
 	};
 
 	Revision2 = {
 		{ Pin::PIN_BL,25 },
-		{ Pin::SD_CS,22 },
-		{ Pin::ENC_MID,0 },
-		{ Pin::ENC_L1,1 },
-		{ Pin::ENC_L2,6 },
-		{ Pin::ENC_L3,5 },
-		{ Pin::ENC_R1,4 },
-		{ Pin::ENC_R2,3 },
-		{ Pin::ENC_R3,2 },
-		{ Pin::POT_L,1 },
-		{ Pin::POT_MID,0 },
-		{ Pin::POT_R,2 },
-		{ Pin::BTN_L,0 },
-		{ Pin::BTN_R,1 },
-		{ Pin::BTN_MID,2 },
-		{ Pin::BTN_L1,3 },
-		{ Pin::BTN_L2,8 },
-		{ Pin::BTN_L3,7 },
-		{ Pin::BTN_R1,6 },
-		{ Pin::BTN_R2,5 },
-		{ Pin::BTN_R3,4 },
 		{ Pin::I2S_WS,4 },
 		{ Pin::I2S_DO,19 },
 		{ Pin::I2S_BCK,21 },
@@ -118,5 +99,8 @@ void Pins::initPinMaps(){
 		{ Pin::SPI_MISO,-1 },
 		{ Pin::SPI_MOSI,23 },
 		{ Pin::SPI_SS, -1 },
+		{ Pin::PIN_DC, 33 },
+		{ Pin::PIN_CS, 32 },
+		{ Pin::PIN_RST, 12 },
 	};
 }

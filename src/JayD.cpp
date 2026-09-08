@@ -6,13 +6,6 @@
 #include <SD_MMC.h>
 #include "Pins.h"
 
-const i2s_pin_config_t i2s_pin_config = {
-		.bck_io_num = PIN(I2S_BCK),
-		.ws_io_num = PIN(I2S_WS),
-		.data_out_num = PIN(I2S_DO),
-		.data_in_num = PIN(I2S_DI)
-};
-
 IS31FL3731 charlie;
 Matrix LEDmatrix(charlie);
 MatrixOutputBuffer charlieBuffer(&charlie);
@@ -28,6 +21,13 @@ void JayDImpl::begin(){
 	}else{
 		Serial.println("No PSRAM detected");
 	}
+
+	i2s_pin_config = {
+		.bck_io_num = PIN(I2S_BCK),
+		.ws_io_num = PIN(I2S_WS),
+		.data_out_num = PIN(I2S_DO),
+		.data_in_num = PIN(I2S_DI)
+	};
 
 	disableCore0WDT();
 	disableCore1WDT();
@@ -60,16 +60,12 @@ void JayDImpl::begin(){
 		Serial.println("SPIFFS error");
 	}
 
-	if(HWRevision::get() == 3){
-		display.getTft()->setPanel(JayDDisplay::panel4());
-	}else{
-		if (HWRevision::get() == 2){
-			display.getTft()->setPanel(JayDDisplay::panel3());
-		}else if(HWRevision::get() == 1){
-			display.getTft()->setPanel(JayDDisplay::panel2());
-		}else{
-			display.getTft()->setPanel(JayDDisplay::panel1());
-		}
+	if (ver == Ver::v1_3 || ver == Ver::v1_2){
+		display.getTft()->setPanel(JayDDisplay::panel3());
+	} else if (ver == Ver::v1_1){
+		display.getTft()->setPanel(JayDDisplay::panel2());
+	} else{
+		display.getTft()->setPanel(JayDDisplay::panel1());
 	}
 
 	display.begin();
@@ -99,6 +95,7 @@ void JayDImpl::initVer(int override){
 
 	if(hw >= 0 && hw < sizeof(map) / sizeof(map[0])){
 		ver = map[hw];
+		Pins::setRev(hw);
 	}else{
 		verInited = false;
 	}
@@ -152,17 +149,9 @@ bool JayDImpl::SD_remove(const String& path){
 
 bool JayDImpl::SD_begin(){
 	if (ver == Ver::v1_3){
-		return SD_MMC.begin();
+		return SD_MMC.begin("/sdcard", true);
 	}
-	return SD.begin();
-}
-
-bool JayDImpl::SD_begin(uint8_t ssPin, SPIClass& spi){
-	return SD.begin(ssPin, spi);
-}
-
-bool JayDImpl::SD_begin(const char* mountpoint, bool mode1bit){
-	return SD_MMC.begin(mountpoint, mode1bit);
+	return SD.begin(22, SPI);
 }
 
 void JayDImpl::SD_end(){
