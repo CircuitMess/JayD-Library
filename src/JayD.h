@@ -64,8 +64,6 @@ public:
 	bool SD_remove(const String& path);
 
 	bool SD_begin();
-	bool SD_begin(uint8_t ssPin, SPIClass &spi);
-	bool SD_begin(const char* mountpoint, bool mode1bit);
 	void SD_end();
 
 	i2s_pin_config_t i2s_pin_config;
@@ -74,8 +72,8 @@ private:
 	Display display;
 
 	enum class Ver { v1_0, v1_1, v1_2, v1_3 } ver = Ver::v1_0;
-	bool verInited = false;
 
+	bool verInited = false;
 };
 
 extern JayDImpl JayD;
