@@ -51,3 +51,8 @@ void SpeedModifier::fillBuffer(){
 void SpeedModifier::setSource(Source* source){
 	SpeedModifier::source = source;
 }
+
+void SpeedModifier::reset(){
+	dataBuffer->clear();
+	remainder = 0;
+}

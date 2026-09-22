@@ -8,9 +8,12 @@
 #include "../Services/SDScheduler.h"
 #include "Decoder/libhelix-aac/aacdec.h"
 #include <Buffer/RingBuffer.h>
+#include <Sync/Mutex.h>
+#include <Util/Task.h>
 #include <aacenc_lib.h>
 #include <aacdecoder_lib.h>
 #include <Buffer/DataBuffer.h>
+#include "ADTSTiming.h"
 
 class SourceAAC : public Source
 {
@@ -25,6 +28,20 @@ public:
 	uint16_t getElapsed() override;
 	void seek(uint16_t time, fs::SeekMode mode) override;
 
+	uint64_t getDurationSourceFrames() const;
+	uint64_t getElapsedSourceFrames() const;
+	uint32_t getSourceSampleRate() const;
+	uint8_t getSourceChannels() const;
+	bool seekSourceFrame(uint64_t frame);
+
+	enum FrameIndexQuality : uint8_t {
+		INDEX_UNAVAILABLE,
+		INDEX_PENDING,
+		INDEX_PARTIAL,
+		INDEX_COMPLETE
+	};
+	FrameIndexQuality getFrameIndexQuality() const;
+
 	void open(fs::File file);
 
 	void close() override;
@@ -33,13 +50,10 @@ public:
 
 	void setRepeat(bool repeat);
 	void setSongDoneCallback(void (*callback)());
+	bool isReadReady() const;
 
 private:
 	fs::File file;
-	uint32_t bitrate = 0;
-
-	size_t dataSize = 0;
-	size_t movedBytes = 0;
 
 	float volume = 1.0f;
 
@@ -49,43 +63,41 @@ private:
 	DataBuffer fillBuffer;
 	DataBuffer dataBuffer;
 	void refill();
+	bool prepareNextFrame(ADTSTiming::Header& header);
 
 	HAACDecoder hAACDecoder = nullptr;
 
-	struct ADTSHeader {
-		unsigned char syncword_0_to_8: 8;
-
-		unsigned char protection_absent: 1;
-		unsigned char layer: 2;
-		unsigned char ID: 1;
-		unsigned char syncword_9_to_12: 4;
-
-		unsigned char channel_configuration_0_bit: 1;
-		unsigned char private_bit: 1;
-		unsigned char sampling_frequency_index: 4;
-		unsigned char profile: 2;
-
-		unsigned char frame_length_0_to_1: 2;
-		unsigned char copyrignt_identification_start: 1;
-		unsigned char copyright_identification_bit: 1;
-		unsigned char home: 1;
-		unsigned char original_or_copy: 1;
-		unsigned char channel_configuration_1_to_2: 2;
-
-		unsigned char frame_length_2_to_9: 8;
-
-		unsigned char adts_buffer_fullness_0_to_4: 5;
-		unsigned char frame_length_10_to_12: 3;
-
-		unsigned char number_of_raw_data_blocks_in_frame: 2;
-		unsigned char adts_buffer_fullness_5_to_10: 6;
-	};
-
-
 	SDResult* readResult = nullptr;
 	void addReadJob(bool full = false);
-	void processReadJob();
+	void processReadJob(bool wait = false);
 	void resetDecoding();
+	void startFrameIndex();
+	void buildFrameIndex(Task* task);
+	void freeFrameIndex();
+	static void indexThread(Task* task);
+
+	ADTSTiming::FrameIndexEntry* frameIndex = nullptr;
+	size_t frameIndexCount = 0;
+	size_t frameIndexCapacity = 0;
+	FrameIndexQuality frameIndexQuality = INDEX_UNAVAILABLE;
+	mutable Mutex indexMutex;
+	Task indexTask;
+	String filePath;
+	uint64_t durationSourceFrames = 0;
+	uint64_t indexedSourceFrameEnd = 0;
+	mutable portMUX_TYPE timingMux = portMUX_INITIALIZER_UNLOCKED;
+	uint64_t elapsedSourceFrames = 0;
+	uint64_t decodedSourceFrame = 0;
+	uint64_t seekTargetSourceFrame = 0;
+	uint64_t elapsedFrameRemainder = 0;
+	uint32_t sourceSampleRate = 0;
+	uint8_t sourceChannels = 0;
+	uint8_t adtsChannelConfiguration = 0;
+	uint32_t firstFrameOffset = 0;
+	bool readEof = false;
+	bool discardPendingRead = false;
+	bool rewindAttempted = false;
+	ADTSTiming::EofNotification eofNotification;
 
 	bool repeat = false;
 	void (*songDoneCallback)() = nullptr;

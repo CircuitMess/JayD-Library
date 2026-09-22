@@ -28,6 +28,7 @@ public:
 private:
 	std::vector<Generator*> sourceList;
 	std::vector<int16_t*> bufferList;
+	std::vector<size_t> receivedSamples;
 	uint8_t mixRatio = 122; //half-half by default, 0 = only first track, 255 = only second track
 	std::vector<bool> pauseList;
 };

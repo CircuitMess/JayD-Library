@@ -2,10 +2,10 @@
 #include "../AudioSetup.hpp"
 
 //clipping wave to avoid overflows
-int16_t clip(int32_t input){ 
+int16_t clip(int32_t input){
 
-    if (input > 0x7FFF) return 0x7FFFF;
-    if (input < - 0x7FFF) return -0x7FFF;
+    if (input > INT16_MAX) return INT16_MAX;
+    if (input < INT16_MIN) return INT16_MIN;
     return input;
 }
 
@@ -23,7 +23,7 @@ Mixer::~Mixer()
 
 size_t Mixer::generate(int16_t *outBuffer){
 	memset(outBuffer, 0, BUFFER_SIZE);
-	std::vector<size_t> receivedSamples(sourceList.size(), 0);
+	std::fill(receivedSamples.begin(), receivedSamples.end(), 0);
 
 	for(uint8_t i = 0; i < sourceList.size(); i++){
 		if(pauseList[i]) continue;
@@ -31,9 +31,6 @@ size_t Mixer::generate(int16_t *outBuffer){
 		int16_t* buffer = bufferList[i];
 		if(generator != nullptr && buffer != nullptr){
 			receivedSamples[i] = generator->generate(buffer);
-			if(receivedSamples[i] == 0){
-				pauseList[i] = true;
-			}
 		}
 	}
 
@@ -41,7 +38,7 @@ size_t Mixer::generate(int16_t *outBuffer){
 		int32_t wave = 0;
 		for(uint8_t j = 0; j < sourceList.size(); j++){
 			if(pauseList[j]) continue;
-			if(bufferList[j] == nullptr || receivedSamples[j] < i/NUM_CHANNELS) break;
+			if(bufferList[j] == nullptr || receivedSamples[j] <= i/NUM_CHANNELS) continue;
 
 			if(sourceList.size() == 2){
 				wave += bufferList[j][i] * (float)((j == 1 ? (float)(mixRatio) : (float)(255.0 - mixRatio))/255.0); //use the mixer if only 2 tracks found
@@ -51,17 +48,14 @@ size_t Mixer::generate(int16_t *outBuffer){
 		}
 		outBuffer[i] = clip(wave);
 	}
-	size_t longestBuffer = *std::max_element(receivedSamples.begin(), receivedSamples.end());
+	size_t longestBuffer = receivedSamples.empty()
+		? 0
+		: *std::max_element(receivedSamples.begin(), receivedSamples.end());
 
 	if(longestBuffer == 0){
-		bool allPaused = true;
-		for(bool p : pauseList){
-			allPaused &= p;
-		}
-
-		if(allPaused){
-			return BUFFER_SAMPLES;
-		}
+		// SD-backed decoders can briefly underflow; silence this block without
+		// turning a recoverable read delay into a persistent deck pause.
+		return BUFFER_SAMPLES;
 	}
 
 	return longestBuffer;
@@ -86,6 +80,7 @@ void Mixer::addSource(Generator* generator){
 	}
 
 	bufferList.push_back(buffer);
+	receivedSamples.push_back(0);
 	pauseList.push_back(false);
 }
 

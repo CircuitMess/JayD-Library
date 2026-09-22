@@ -29,6 +29,7 @@ public:
 	void setSpeed(float speed);
 
 	void setSource(Source* source);
+	void reset();
 
 private:
 	Source *source = nullptr;
